@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Studio d’Histoires IA · 2D strict</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.js"></script>
+
+
+
+
+
+<style>
+:root{--bg:#15101f;--card:#211a31;--line:#382c52;--txt:#f3eefc;--mut:#a597c4;--acc:#ffb347;--ok:#4ade80;--bad:#ff6b6b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.45 system-ui,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+main{max-width:900px;margin:0 auto;padding:16px 16px 80px}h1{font:800 28px/1.1 system-ui;margin:8px 0}h2{font:800 18px system-ui;margin:0 0 6px}
+.note{color:var(--mut);font-size:13px;margin:4px 0 8px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin:12px 0}
+input,select,textarea{width:100%;background:#120d1c;color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:11px;font:inherit;margin-top:8px}
+textarea{min-height:100px}button{font:600 15px system-ui;border:0;border-radius:12px;padding:11px 14px;background:var(--acc);color:#2a1a00;cursor:pointer}
+button.g{background:transparent;color:var(--txt);border:1px solid var(--line)}button:disabled{opacity:.45}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.row>*{flex:1 1 120px;margin-top:0}
+.tabs{display:flex;gap:6px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5}.tabs button{flex:1;background:transparent;color:var(--txt);border:1px solid var(--line)}.tabs button.on{background:var(--acc);color:#2a1a00}
+.it{border-top:1px solid var(--line);padding:10px 0;font-size:14px}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--mut);margin-right:6px}.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}
+.err{color:var(--bad);font-size:14px;white-space:pre-wrap}.hide{display:none}
+.bar{height:12px;background:#120d1c;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;width:0;background:var(--acc);transition:width .3s}
+body{font-family:"Figtree",system-ui,sans-serif}h1,h2{font-family:"Bricolage Grotesque",system-ui,sans-serif}.big{width:100%;padding:16px;font-size:17px;margin-top:10px}.pbar{height:14px;background:#120d1c;border-radius:12px;overflow:hidden;margin:8px 0}.pbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#8b6cf6,var(--acc));transition:width .3s}
+#split,#gen_brief,#gen_free,#vx{display:none}.agb{padding:4px 10px;font-size:13px;margin-left:8px}
+.agh{display:flex;align-items:center;gap:4px}.dot.w{background:var(--acc)}[data-s=ok] .bar i{background:var(--ok)}[data-s=bad] .bar i{background:var(--bad)}
+</style></head><body><main>
+<h1>Studio d’Histoires IA</h1>
+<p class="note">Fournisseurs IA universels · médias et illustrations · animation 2D · personnages cohérents · scènes verticales 9:16.</p>
+<div class="tabs"><button class="on" data-t="ia">IA</button><button data-t="res">Ressources</button><button data-t="his">Histoire</button></div>
+
+<section id="t_ia">
+<div class="card"><h2>Accès à l’IA (toute clé API)</h2>
+<input id="key" type="password" autocomplete="off" placeholder="Colle ta clé API (Gemini, OpenAI, Claude, Grok, DeepSeek, OpenRouter, Groq…)">
+<select id="p"></select>
+<div id="cust" class="hide"><input id="base" type="text" placeholder="URL de base, ex : http://localhost:11434/v1"><input id="mod" type="text" placeholder="Nom du modèle (optionnel)"></div>
+<div class="row"><button id="add">🔒 Enregistrer la clé</button></div>
+<p class="err" id="e1"></p>
+<p class="note">Colle simplement ta clé : le logiciel reconnaît le fournisseur, teste la clé avec une vraie requête, puis la rend utilisable partout. Tu peux coller plusieurs clés (une par fournisseur). La clé reste sur cet appareil (stockage du navigateur, non chiffré) et n’est envoyée qu’à son fournisseur.</p></div>
+<div class="card"><h2>Mes connexions</h2><div id="conns"></div></div>
+<details class="card"><summary><b>Avancé : choisir quelle IA fait quelle tâche</b></summary><p class="note">Par défaut, ta première clé valide fait tout. Si une IA échoue, une autre te est proposée : rien ne bascule sans ton accord.</p><div id="tasks"></div></details>
+</section>
+
+<section id="t_res" class="hide">
+<div class="card"><h2>Importer des médias et ressources 2D</h2>
+<p class="note">Dépose ici n’importe quel fichier : <b>photo, vidéo, images, vidéos, sons, ZIP, texte d’histoire (.txt / .md), plan .json</b>. Les photos et vidéos peuvent servir de décors. Les illustrations peuvent être réutilisées comme références visuelles.</p>
+<p class="note">Importe tes images, décors, sons ou archives ZIP ici. Les doublons sont ignorés grâce à leur empreinte SHA-256.</p>
+<input id="fi" type="file" multiple>
+<p class="note" id="imp"></p></div>
+<div class="card"><h2>Catalogue</h2><div class="row"><input id="q" type="text" placeholder="Rechercher"><select id="kf"><option value="">Tout</option><option>personnage</option><option>rigsource</option><option>environnement</option><option>objet</option><option>image</option><option>vidéo</option><option>audio</option><option>autre</option></select></div><div id="cat"></div></div>
+</section>
+
+<section id="t_his" class="hide">
+<div class="card"><h2>Personnages de l’histoire</h2>
+<div class="row"><input id="cn" type="text" placeholder="Nom (ex : Moussa)"><input id="cd" type="text" placeholder="Description (ex : jeune homme, 20 ans)"></div>
+<div class="row"><button id="cadd">Ajouter</button></div><div id="chars"></div></div>
+<div class="card"><h2>Consignes pour l’IA</h2>
+<p class="note">Dis à l’IA ce que tu veux : genre, ambiance, personnages, nombre de scènes, fin… (facultatif).</p>
+<textarea id="brief" placeholder="Ex : une petite histoire drôle en 5 scènes, dans un village, avec Moussa et son père, fin émouvante."></textarea>
+<div class="row"><button id="gen_brief">✍️ Créer selon mes consignes</button><button id="gen_free">🎲 Inventer une histoire de zéro</button></div>
+<p class="note">Laisse vide pour que l’IA invente tout. Sinon écris tes consignes, puis appuie sur 🚀 Lancer plus bas.</p>
+<p class="err" id="e3"></p></div>
+<div class="card"><h2>Progression</h2><div class="pbar"><i id="gb"></i></div><p class="note" id="gt">0 %</p><div id="ags"></div><button class="big" id="go">🚀 Lancer tout automatiquement</button><p class="note">Histoire vide : l’IA l’invente (avec tes consignes). Histoire déjà écrite : elle la garde. Ensuite tous les agents se suivent, jusqu’à la vidéo. ▶ = relancer un seul agent.</p><p class="note" id="rq">Requêtes IA envoyées : 0</p><p class="err" id="e4"></p></div>
+<div class="card"><h2>Histoire / épisode</h2>
+<textarea id="story" placeholder="Ou écris / colle ici ta propre histoire, ex : Moussa entre dans une maison et rencontre son père."></textarea>
+<div class="row"><input id="ep" type="text" placeholder="Titre de l’épisode"><button id="split">Découper en scènes (IA orchestrateur)</button></div>
+<p class="err" id="e2"></p></div>
+<div id="scenes"></div>
+<div class="card"><h2>Exporter la vidéo</h2><p class="note">Bouche calée sur le volume réel de la voix. Même moteur d’export que ton montage TikTok : MP4 H.264 vertical, lisible sur TikTok, YouTube Shorts, Instagram et tout site. Chaque personnage conserve une apparence cohérente ; la voix ci-dessous sert au narrateur.</p>
+<label style="display:flex;gap:10px;align-items:center;margin:10px 0"><input type="checkbox" id="vox" checked style="width:22px;height:22px;margin:0"> 🎙️ Ajouter les voix (Gemini, 1 requête pour 2 personnages)</label><select id="voice"><option value="Puck">Voix narrateur : garçon jeune et vif</option><option value="Fenrir">Voix : garçon excité</option><option value="Leda">Voix : fille jeune</option><option value="Zephyr">Voix : fille lumineuse</option></select><select id="res"><option value="720">720×1280 (rapide, recommandé)</option><option value="1080">1080×1920 (HD, plus lent)</option></select>
+<label style="display:flex;gap:10px;align-items:center;margin:10px 0"><input type="checkbox" id="subs" checked style="width:22px;height:22px;margin:0"> Incruster les sous-titres (dialogues)</label>
+<button id="vx">🎬 Générer la vidéo MP4</button><p class="note" id="xs"></p><div id="out"></div></div>
+<div class="row"><button class="g" id="exp">Exporter le plan (JSON 9:16)</button></div>
+</section>
+</main>
+<script>
+const $=s=>document.querySelector(s),esc=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const LS={get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const J=t=>{t=String(t).replace(/```json|```/g,"");const a=t.search(/[\[{]/),b=Math.max(t.lastIndexOf("]"),t.lastIndexOf("}"));return JSON.parse(t.slice(a,b+1))};
+const uid=()=>Math.random().toString(36).slice(2,10);
+/* ===== Barres de progression des agents ===== */
+const AGS={};
+function agRow(id,label){let r=AGS[id];if(!r){const d=document.createElement("div");d.className="it";d.innerHTML='<div class="agh"><span class="dot"></span><b></b><span class="note agp" style="margin-left:auto">0 %</span><button class="g agb" style="display:none">▶</button></div><div class="bar"><i></i></div><p class="note agt" style="margin:4px 0 0"></p>';d.querySelector("b").textContent=label;$("#ags").appendChild(d);r=AGS[id]={d,t:null,p:0};const n=$("#agnone");if(n)n.remove()}return r}
+function agSet(id,p,txt,st){const r=AGS[id];if(!r)return;r.p=p;const s=st!==undefined?st:(p>0&&p<100?"w":"");r.d.dataset.s=s;r.d.querySelector(".bar i").style.width=p+"%";r.d.querySelector(".agp").textContent=Math.round(p)+" %";if(txt!=null)r.d.querySelector(".agt").textContent=txt;r.d.querySelector(".dot").className="dot "+s;const g=Math.round(AG.reduce((a,x)=>a+(AGS[x[0]]?AGS[x[0]].p:0),0)/AG.length);$("#gb").style.width=g+"%";$("#gt").textContent=g+" % · "+(s=="bad"?"erreur":g>=100?"terminé":"en cours")}
+async function track(id,label,txt,fn){const r=agRow(id,label);clearInterval(r.t);agSet(id,3,txt);r.t=setInterval(()=>agSet(id,r.p+(92-r.p)*.05,txt),400);
+  try{const v=await fn();clearInterval(r.t);agSet(id,100,typeof v=="string"?v:"Terminé ✔","ok");return v}catch(e){clearInterval(r.t);agSet(id,r.p,"Échec : "+e.message,"bad");throw e}}
+const AG=[["scen","✍️ Scénariste","histoire, scènes, titres"],["orch","🧠 Orchestrateur","découpage en scènes"],["cast","🎭 Directeur de casting","type, genre, âge et voix de chaque personnage"],["info","💻 Décors animés","construction des environnements 2D"],["lib","📚 Bibliothèque 2D","identité et apparence persistantes des personnages"],["gr","🎨 Moteur graphique 2D","personnages, décors et mouvements"],["vo","🎙️ Voix","voix off"],["qc","✅ Contrôleur qualité","vérifie casting, voix et animations"],["mont","🎞️ Monteur","vidéo MP4 + sous-titres"],["titre","📝 Titres","titre et hashtags à copier"]];
+const STEP={scen:()=>genStory(($("#brief").value||"").trim()?"brief":"free"),orch:()=>$("#split").onclick(),info:()=>{PR.scenes.forEach(s=>{s.code="";s._fn=undefined});return runInfo()},cast:()=>castAll(),qc:()=>qcAll(),lib:()=>libAll(),gr:()=>graphAll(),mont:async()=>{await avatars();await exportVideo()}};
+AG.forEach(a=>{const r=agRow(a[0],a[1]);agSet(a[0],0,a[2]+" · en attente","");if(STEP[a[0]]){const bt=r.d.querySelector(".agb");bt.style.display="";bt.onclick=async()=>{bt.disabled=true;try{await STEP[a[0]]()}catch(er){}bt.disabled=false}}});
+const COOL={};let REQ=0;
+const SCN='[{"title":"","characters":["Nom"],"location":"lieu court (ex : intérieur maison)","action":"ce que font les personnages (verbes)","dialogue":[{"who":"Nom","text":""}],"camera":"plan","transition":"coupe|fondu"}]';
+const mapSc=s=>s.map(x=>({title:String(x.title||""),characters:(x.characters||[]).map(String),location:String(x.location||""),action:String(x.action||""),dialogue:Array.isArray(x.dialogue)?x.dialogue:[],camera:String(x.camera||""),transition:String(x.transition||"coupe"),prep:null}));
+function copyTxt(t,b){const ok=()=>{const o=b.textContent;b.textContent="Copié ✔";setTimeout(()=>b.textContent=o,1500)};try{navigator.clipboard.writeText(t).then(ok,()=>prompt("Copie ce texte :",t))}catch(e){prompt("Copie ce texte :",t)}}
+
+/* ===== 1. Fournisseurs IA : adaptateurs ===== */
+const PRE={gemini:{n:"Google Gemini",t:"gemini",base:"https://generativelanguage.googleapis.com/v1beta"},anthropic:{n:"Anthropic Claude",t:"anthropic",base:"https://api.anthropic.com/v1"},
+openai:{n:"OpenAI",t:"oai",base:"https://api.openai.com/v1"},xai:{n:"xAI Grok",t:"oai",base:"https://api.x.ai/v1"},deepseek:{n:"DeepSeek",t:"oai",base:"https://api.deepseek.com/v1"},
+mistral:{n:"Mistral",t:"oai",base:"https://api.mistral.ai/v1"},openrouter:{n:"OpenRouter",t:"oai",base:"https://openrouter.ai/api/v1"},groq:{n:"Groq",t:"oai",base:"https://api.groq.com/openai/v1"},
+custom:{n:"Autre / serveur local (compatible OpenAI)",t:"oai",base:""}};
+class AIError extends Error{constructor(m,k){super(m);this.kind=k}}
+async function http(url,o){let r;try{r=await fetch(url,o)}catch(e){throw new AIError("Fournisseur injoignable ou appel navigateur refusé (CORS).","net")}
+  let j=null;try{j=await r.json()}catch(e){}
+  if(!r.ok){const m=j?.error?.message||j?.message||"HTTP "+r.status;throw new AIError(r.status==401||r.status==403?"Clé refusée ("+r.status+") : "+m:r.status==429?"Quota ou limite atteint : "+m:m,r.status==429?"quota":(r.status>=500||/high demand|overloaded|unavailable/i.test(m))?"busy":"http")}return j}
+const ah=c=>({"x-api-key":c.key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true","content-type":"application/json"});
+const bh=c=>({"Content-Type":"application/json",...(c.key?{Authorization:"Bearer "+c.key}:{})});
+const ADP={
+ gemini:{models:async c=>((await http(c.base+"/models?pageSize=200",{headers:{"x-goog-api-key":c.key}})).models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent")).map(m=>m.name.replace("models/","")),
+  chat:async(c,m,p)=>{const j=await http(`${c.base}/models/${m}:generateContent`,{method:"POST",headers:{"x-goog-api-key":c.key,"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:p}]}],generationConfig:{responseMimeType:"application/json"}})});return(j.candidates?.[0]?.content?.parts||[]).map(x=>x.text||"").join("")}},
+ anthropic:{models:async c=>((await http(c.base+"/models?limit=100",{headers:ah(c)})).data||[]).map(m=>m.id),
+  chat:async(c,m,p)=>{const j=await http(c.base+"/messages",{method:"POST",headers:ah(c),body:JSON.stringify({model:m,max_tokens:4096,messages:[{role:"user",content:p}]})});return(j.content||[]).map(x=>x.text||"").join("")}},
+ oai:{models:async c=>{const j=await http(c.base+"/models",{headers:bh(c)});return(j.data||j.models||[]).map(m=>m.id||m.name).filter(Boolean)},
+  chat:async(c,m,p)=>{const j=await http(c.base+"/chat/completions",{method:"POST",headers:bh(c),body:JSON.stringify({model:m,messages:[{role:"user",content:p}]})});return j.choices?.[0]?.message?.content||""}}};
+const adp=c=>ADP[PRE[c.p].t];
+const conns=()=>LS.get("sf_conns",[]),saveC=a=>LS.set("sf_conns",a);
+const pickModel=l=>l.find(m=>/flash|mini|haiku|small|chat|8b/i.test(m))||l[0];
+const DEF={gemini:["gemini-2.5-flash-lite","gemini-2.5-flash","gemini-flash-lite-latest","gemini-flash-latest"],openai:["gpt-4o-mini","gpt-4.1-mini"],openrouter:["openrouter/auto"],groq:["llama-3.3-70b-versatile","llama-3.1-8b-instant"],mistral:["mistral-small-latest"],anthropic:["claude-haiku-5-5","claude-sonnet-5-5"],deepseek:["deepseek-chat"]};
+const BAD=/tts|image|embed|live|audio|aqa|imagen|veo|whisper|moderation|dall|transcribe|realtime|guard/i;
+function setModels(c,l){const ok=(l||[]).filter(m=>!BAD.test(m)),d=(DEF[c.p]||[]).filter(m=>ok.includes(m)),base=d.length?d:ok.length?ok.slice(0,4):(DEF[c.p]||[]);c.models=[...new Set([...(c.model?[c.model]:[]),...base])];c.model=c.models[0]||""}
+async function testConn(c){ /* comme l'ancien site : un simple appel de liste, aucune génération, aucun quota consommé */
+  const l=await adp(c).models(c);setModels(c,l);if(!c.model)throw new AIError("Indique un modèle.","cfg");c.status="ok";c.tested=Date.now();return c}
+const mask=k=>k?"••••••••"+k.slice(-4):"(sans clé)";
+$("#p").innerHTML='<option value="auto">Fournisseur : détection automatique</option>'+Object.entries(PRE).map(([k,v])=>`<option value="${k}">${v.n}</option>`).join("");
+$("#p").onchange=()=>$("#cust").classList.toggle("hide",$("#p").value!="custom");$("#p").onchange();
+const detect=k=>/^AIza/.test(k)?["gemini"]:/^sk-ant-/.test(k)?["anthropic"]:/^sk-or-/.test(k)?["openrouter"]:/^gsk_/.test(k)?["groq"]:/^xai-/.test(k)?["xai"]:/^sk-/.test(k)?["openai","deepseek"]:[];
+$("#add").onclick=async()=>{const b=$("#add"),e=$("#e1");e.textContent="";e.style.color="";const key=$("#key").value.trim(),sel=$("#p").value;
+  if(!key&&sel!="custom"){e.textContent="Colle ta clé API.";return}
+  if(conns().some(c=>c.key&&c.key==key)){e.textContent="Cette clé est déjà enregistrée.";return}
+  const cands=sel=="auto"?detect(key):[sel];if(!cands.length){e.textContent="Clé non reconnue automatiquement : choisis le fournisseur dans la liste.";return}
+  b.disabled=true;b.textContent="Test de la clé…";let last="",ok=null,first=null;
+  for(const p of cands){const base=(PRE[p].base||$("#base").value.trim()).replace(/\/$/,"");if(!base){last="Indique l’URL de base.";break}
+    const c={id:uid(),p,label:PRE[p].n,key,base,model:p=="custom"?$("#mod").value.trim():"",enabled:true,status:"?"};first=first||c;
+    try{await testConn(c);ok=c;break}catch(er){last=er.message}}
+  if(ok){const a=conns();a.push(ok);saveC(a);$("#key").value="";e.style.color="var(--ok)";e.textContent="🔒 Clé enregistrée et valide · "+PRE[ok.p].n+" · modèles : "+ok.models.slice(0,2).join(", ")+" · utilisable dans tout le logiciel."}
+  else if(first){setModels(first,[]);first.status="bad";first.err=last;const a=conns();a.push(first);saveC(a);$("#key").value="";e.textContent="🔒 Clé enregistrée mais refusée ou bloquée par le fournisseur (CORS) : "+last+" · utilise « Retirer la clé » pour en changer."}
+  else e.textContent="❌ "+last
+  b.disabled=false;b.textContent="🔒 Enregistrer la clé";drawC()};
+function drawC(){const a=conns();$("#conns").innerHTML=a.length?a.map(c=>`<div class="it"><span class="dot ${c.status=="ok"&&c.enabled?"ok":"bad"}"></span><b>${esc(c.label)}</b> · ${esc(PRE[c.p].n)} · ${mask(c.key)} · ${c.enabled?(c.status=="ok"?"valide":"à retester"):"désactivée"}
+ <select data-m="${c.id}">${[...new Set([c.model,...(c.models||[])])].map(m=>`<option ${m==c.model?"selected":""}>${esc(m)}</option>`).join("")}</select>
+ <div class="row"><button class="g" data-a="test" data-i="${c.id}">Retester</button><button class="g" data-a="key" data-i="${c.id}">Changer la clé</button><button class="g" data-a="tog" data-i="${c.id}">${c.enabled?"Désactiver":"Activer"}</button><button class="g" data-a="del" data-i="${c.id}">Retirer la clé</button></div></div>`).join(""):'<p class="note">Aucune connexion.</p>';drawT()}
+$("#conns").onchange=e=>{const m=e.target.dataset.m;if(!m)return;const a=conns(),c=a.find(x=>x.id==m);c.model=e.target.value;c.status="?";saveC(a);drawC()};
+$("#conns").onclick=async e=>{const t=e.target,i=t.dataset.i,ac=t.dataset.a;if(!ac)return;let a=conns();const c=a.find(x=>x.id==i);
+  if(ac=="del"){if(!confirm("Supprimer cette connexion ?"))return;a=a.filter(x=>x.id!=i);const s=LS.get("sf_assign",{});Object.keys(s).forEach(k=>s[k].id==i&&delete s[k]);LS.set("sf_assign",s)}
+  if(ac=="tog")c.enabled=!c.enabled;
+  if(ac=="key"){const k=prompt("Nouvelle clé API (elle sera testée) :");if(!k)return;c.key=k.trim();c.status="?"}
+  if(ac=="test"||ac=="key"){t.disabled=true;t.textContent="Test…";try{await testConn(c)}catch(er){c.status="bad";alert("Échec : "+er.message)}}
+  saveC(a);drawC()};
+/* ===== 2. Affectation des tâches + secours sans bascule silencieuse ===== */
+const TASKS={orchestrator:"Cerveau principal / orchestration (découpage en scènes, agent graphique)",script:"Amélioration des scénarios",text:"Génération de texte libre",coder:"Informaticien (code des décors animés)"};
+function drawT(){const ok=conns().filter(c=>c.enabled&&c.status=="ok"),A=LS.get("sf_assign",{});let ch=false;Object.keys(TASKS).forEach(k=>{if((!A[k]||!ok.some(c=>c.id==A[k].id))&&ok[0]){A[k]={id:ok[0].id,model:ok[0].model};ch=true}});if(ch)LS.set("sf_assign",A);
+  $("#tasks").innerHTML=Object.entries(TASKS).map(([k,l])=>`<div class="it">${l}<select data-k="${k}">${ok.flatMap(c=>[...new Set([c.model,...(c.models||[])])].map(m=>{const v=c.id+"|"+m;return`<option value="${esc(v)}" ${A[k]&&A[k].id==c.id&&A[k].model==m?"selected":""}>${esc(c.label)} · ${esc(m)}</option>`})).join("")}</select></div>`).join("")}
+$("#tasks").onchange=e=>{const k=e.target.dataset.k;if(!k)return;const s=LS.get("sf_assign",{});if(!e.target.value)delete s[k];else{const[i,...m]=e.target.value.split("|");s[k]={id:i,model:m.join("|")}}LS.set("sf_assign",s)};
+async function run(c,first,prompt){const ms=[...new Set([first,...(c.models||[])])].filter(Boolean);let last=null;
+  for(let t=0;t<4;t++){for(const m of ms){if((COOL[m]||0)>Date.now()&&ms.some(x=>(COOL[x]||0)<=Date.now()))continue;try{REQ++;$("#rq").textContent="Requêtes IA envoyées : "+REQ;const o=await adp(c).chat(c,m,prompt);if(o.trim())return o;last=new AIError("Réponse vide","empty")}catch(e){last=e;if(e.kind=="quota")COOL[m]=Date.now()+(/day/i.test(e.message)?216e5:6e4);if(/refus|API key/i.test(e.message)||e.kind=="net")throw e}}
+    if(last&&(last.kind=="quota"||last.kind=="busy")&&t<3){$("#e2").textContent=(last.kind=="busy"?"Serveur IA surchargé sur ":"Limite atteinte sur ")+c.label+", nouvelle tentative automatique…";await sleep(8000*(t+1))}else break}
+  throw last}
+async function ask(task,prompt){const A=LS.get("sf_assign",{}),all=conns(),tried=[];let a=A[task],c=a&&all.find(x=>x.id==a.id&&x.enabled&&x.status=="ok");
+  if(!c)throw new Error("Aucune clé valide pour la tâche « "+TASKS[task].split(" (")[0]+" » : enregistre une clé dans l’onglet IA.");let model=a.model;
+  for(;;){try{return await run(c,model,prompt)}catch(e){tried.push(c.id);const alt=all.find(x=>x.enabled&&x.status=="ok"&&!tried.includes(x.id));
+    if(alt&&confirm(`${c.label} a échoué : ${e.message}\n\nEssayer ${alt.label} (${alt.model}) ? Selon ton offre, cela peut être payant.`)){c=alt;model=alt.model;continue}throw e}}}
+
+/* ===== 3. Ressources : IndexedDB, import, dédoublonnage, licence ===== */
+let IDBFAIL=null;const MEMA=new Map(),memA={getAll:()=>({result:[...MEMA.values()]}),get:k=>({result:MEMA.get(k)}),put:v=>{MEMA.set(v.hash,v);return{result:v.hash}},delete:k=>{MEMA.delete(k);return{result:undefined}},getAllKeys:()=>({result:[...MEMA.keys()]})};
+const DB=Promise.race([new Promise((ok,ko)=>{try{const r=indexedDB.open("sf_assets",1);r.onupgradeneeded=()=>r.result.createObjectStore("a",{keyPath:"hash"});r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error||new Error("IndexedDB indisponible"));r.onblocked=()=>ko(new Error("IndexedDB bloqué"))}catch(e){ko(e)}}),new Promise((ok,ko)=>setTimeout(()=>ko(new Error("IndexedDB ne répond pas")),6000))]).catch(e=>{IDBFAIL=e;return null});
+DB.then(d=>{if(d)return;const b=document.createElement("div");b.style.cssText="background:#5a2a00;color:#fff;padding:10px 14px;font:14px system-ui;position:relative;z-index:99";b.textContent="⚠ Le navigateur bloque le stockage IndexedDB pour ce fichier ("+String(IDBFAIL&&IDBFAIL.message||IDBFAIL)+"). Le logiciel marche en mémoire temporaire : les modèles importés et recrutés seront perdus à la fermeture. Essaie de libérer de l’espace de stockage ou de rouvrir le fichier depuis Chrome (Téléchargements).";(document.body||document.documentElement).prepend(b)});
+const tx=async(m,f)=>{const d=await DB;if(!d)return f(memA).result;return new Promise((ok,ko)=>{const t=d.transaction("a",m),r=f(t.objectStore("a"));t.oncomplete=()=>ok(r.result);t.onerror=()=>ko(t.error)})};
+const SESS=[],allA=async()=>[...await tx("readonly",s=>s.getAll()),...SESS],getA=async h=>SESS.find(a=>a.hash==h)||await tx("readonly",s=>s.get(h)),putA=a=>tx("readwrite",s=>s.put(a)),delA=h=>tx("readwrite",s=>s.delete(h));
+const EXT=/\.(glb|gltf|fbx|obj)$/i;
+async function sha(buf){return[...new Uint8Array(await crypto.subtle.digest("SHA-256",buf))].map(b=>b.toString(16).padStart(2,"0")).join("")}
+function glbInfo(buf){try{const v=new DataView(buf);if(v.getUint32(0,true)!=0x46546C67)return null;const n=v.getUint32(12,true),j=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,20,n)));
+  return{anims:(j.animations||[]).map((x,i)=>x.name||"anim"+i),skins:(j.skins||[]).length}}catch(e){return null}}
+const CHR=/character|person|human|\bman\b|woman|girl|boy|knight|zombie|soldier|adventurer|farmer|worker|skeleton|persona|kid|child|npc/i,ENV=/house|room|interior|building|kitchen|street|forest|floor|wall|maison|salon|city|town|terrain|level|environment|furniture|bedroom|roof|door|window/i;
+const PIECE=/(^|[_\-. ])(hair|beard|moustache|mustache|eyebrows?|eyes?|eyelashes?|teeth|tongue|hat|helmet|glasses|shoes|boots|gloves|mask|cap|crown|bow|wig)([_\-. ]|\d|$)/i,IMG=/\.(png|jpe?g|webp|bin)$/i,USABLE=/^(glb|gltf)$/i;
+const b64=blob=>new Promise((ok,ko)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=ko;r.readAsDataURL(blob)});
+async function inlineGltf(blob,res){const j=JSON.parse(await blob.text()),fix=async o=>{if(o&&o.uri&&!/^data:/.test(o.uri)){const nm=decodeURIComponent(o.uri).split("/").pop().toLowerCase(),f=await res(nm);if(!f)throw new Error("fichier manquant : "+nm+" (importe aussi les .bin et textures, ou le ZIP complet, ou prends la version .glb)");o.uri=await b64(f)}};
+  for(const b of j.buffers||[])await fix(b);for(const im of j.images||[])await fix(im);return new Blob([JSON.stringify(j)],{type:"model/gltf+json"})}
+async function addAsset(blob,path,pack,lic){const buf=await blob.arrayBuffer(),hash=await sha(buf);if(await getA(hash))return false;
+  const ext=(path.match(EXT)||[""])[0].slice(1).toLowerCase(),inf=ext=="glb"?glbInfo(buf):ext=="gltf"?(()=>{try{const j=JSON.parse(new TextDecoder().decode(buf));return{anims:(j.animations||[]).map((x,i)=>x.name||"anim"+i),skins:(j.skins||[]).length}}catch(e){return null}})():null,name=path.split("/").pop().replace(EXT,"");
+  const kind=PIECE.test(name)?"accessoire":inf&&inf.skins?"personnage":CHR.test(path)?"personnage":ENV.test(path)?"environnement":"objet";
+  await putA({hash,name,path,ext,pack,license:lic,kind,anims:inf?inf.anims:[],animsKnown:!!inf,size:blob.size,blob});return true}
+$("#fi").onchange=async e=>{let add=0,dup=0,n=0,skip=0;const st=$("#imp"),files=[...e.target.files],loose={},errs=[];files.forEach(f=>{if(IMG.test(f.name))loose[f.name.toLowerCase()]=f});
+  try{for(const f of files){if(/\.zip$/i.test(f.name)){const z=await JSZip.loadAsync(f);let lic="Non vérifiée";const L=Object.keys(z.files).find(k=>/licen[cs]e/i.test(k)&&!z.files[k].dir);
+      if(L){const t=await z.files[L].async("string");lic=/CC0|Creative Commons Zero|public domain/i.test(t)?"CC0 (détecté dans le pack)":"À vérifier : "+t.slice(0,90).replace(/\s+/g," ")}
+      const keys=Object.keys(z.files).filter(k=>!z.files[k].dir&&EXT.test(k)),bn=k=>k.split("/").pop().replace(EXT,"").toLowerCase(),glb=new Set(keys.filter(k=>/\.glb$/i.test(k)).map(bn)),any=new Set(keys.filter(k=>/\.(glb|gltf)$/i.test(k)).map(bn)),zres=async nm=>{const k=Object.keys(z.files).find(q=>q.toLowerCase().split("/").pop()==nm);return k?z.files[k].async("blob"):null};
+      for(const k of keys){const ex=k.split(".").pop().toLowerCase();if((ex=="gltf"&&glb.has(bn(k)))||((ex=="fbx"||ex=="obj")&&any.has(bn(k)))){skip++;continue}n++;st.textContent="Import… "+n;
+        try{let bl=await z.files[k].async("blob");if(ex=="gltf")bl=await inlineGltf(bl,zres);(await addAsset(bl,k,f.name,lic))?add++:dup++}catch(er){errs.push(bn(k)+" : "+er.message)}}}
+    else if(EXT.test(f.name)){n++;try{let bl=f;if(/\.gltf$/i.test(f.name))bl=await inlineGltf(f,async nm=>loose[nm]||null);(await addAsset(bl,f.name,"fichier isolé","Non vérifiée"))?add++:dup++}catch(er){errs.push(f.name+" : "+er.message)}}}
+    st.textContent=`${add} ajouté(s), ${dup} doublon(s), ${skip} copie(s) de format inutile ignorée(s).`+(errs.length?" ⚠ "+errs.slice(0,3).join(" · "):"")}catch(er){st.textContent="Erreur : "+er.message}
+  e.target.value="";drawCat()};
+async function drawCat(){const q=$("#q").value.toLowerCase(),k=$("#kf").value,a=(await allA()).filter(x=>(!k||x.kind==k)&&(!q||x.name.toLowerCase().includes(q)));
+  $("#cat").innerHTML=a.slice(0,150).map(x=>`<div class="it"><b>${esc(x.name)}</b> · ${x.kind} · .${x.ext}<br><span class="note">${esc(x.pack)} · ${esc(x.license)} · ${x.animsKnown?x.anims.length+" animation(s)":"animations non lisibles (hors GLB)"}</span><button class="g" data-d="${x.hash}">Retirer</button></div>`).join("")||'<p class="note">Catalogue vide : importe un pack.</p>';}
+$("#cat").onclick=async e=>{if(e.target.dataset.d){await delA(e.target.dataset.d);drawCat()}};$("#q").oninput=$("#kf").onchange=drawCat;
+
+/* ===== 4. Histoire : personnages persistants, scènes, agent graphique ===== */
+let PR=LS.get("sf_proj",{chars:[],scenes:[],story:"",ep:""});const sp=()=>LS.set("sf_proj",PR);
+async function drawChars(){const a=(await allA()).filter(x=>x.kind=="personnage"&&USABLE.test(x.ext)&&!PIECE.test(x.name));
+  $("#chars").innerHTML=PR.chars.map((c,i)=>`<div class="it"><b>${esc(c.name)}</b> — ${esc(c.desc)}${c.sp?` <span class="note">· ${esc(c.sp)} ${c.g=="f"?"♀":"♂"} ${esc(c.age||"")} · voix ${esc(c.voice||"?")}</span>`:""}<select data-c="${i}"><option value="">— modèle non choisi (l’agent choisira) —</option>${a.map(x=>`<option value="${x.hash}" ${x.hash==c.hash?"selected":""}>${esc(x.name)}</option>`).join("")}</select><button class="g" data-r="${i}">Supprimer</button></div>`).join("")||'<p class="note">Aucun personnage.</p>'}
+$("#chars").onchange=e=>{const i=e.target.dataset.c;if(i!=null){PR.chars[i].hash=e.target.value;sp()}};
+$("#chars").onclick=e=>{const i=e.target.dataset.r;if(i!=null){PR.chars.splice(i,1);sp();drawChars()}};
+$("#cadd").onclick=()=>{const n=$("#cn").value.trim();if(!n||PR.chars.some(c=>c.name.toLowerCase()==n.toLowerCase()))return;PR.chars.push({name:n,desc:$("#cd").value.trim(),hash:""});$("#cn").value=$("#cd").value="";sp();drawChars()};
+$("#story").oninput=()=>{PR.story=$("#story").value;PR.meta=null;PR.scenes=[];sp();drawScenes()};$("#ep").oninput=()=>{PR.ep=$("#ep").value;sp()};
+$("#split").onclick=async()=>{const b=$("#split");$("#e2").textContent="";if(!PR.story.trim()){$("#e2").textContent="Écris d’abord l’histoire.";return}b.disabled=true;
+  try{const t=await track("orch","🧠 Orchestrateur · découpage","Découpage en scènes…",()=>ask("orchestrator",`Découpe cette histoire en scènes courtes pour une vidéo verticale TikTok. Personnages connus : ${PR.chars.map(c=>c.name+" ("+c.desc+")").join(", ")||"aucun"}.
+Réponds UNIQUEMENT par un tableau JSON : [{"title":"","characters":["Nom"],"location":"lieu court (ex : intérieur maison)","action":"ce que font les personnages (verbes)","dialogue":[{"who":"Nom","text":""}],"camera":"plan","transition":"coupe|fondu"}]
+Consignes de l’auteur (style, ton, nombre de scènes) : ${PR.brief||"aucune"}.
+Histoire : ${PR.story}`));
+    const s=J(t);if(!Array.isArray(s))throw new Error("Réponse IA non exploitable.");PR.scenes=s.map(x=>({title:String(x.title||""),characters:(x.characters||[]).map(String),location:String(x.location||""),action:String(x.action||""),dialogue:Array.isArray(x.dialogue)?x.dialogue:[],camera:String(x.camera||""),transition:String(x.transition||"coupe"),prep:null}));sp();drawScenes()}
+  catch(er){$("#e2").textContent="❌ "+er.message}b.disabled=false};
+$("#brief").value=PR.brief||"";$("#brief").oninput=()=>{PR.brief=$("#brief").value;sp()};
+async function genStory(mode,auto){const e=$("#e3"),b=$("#gen_"+mode),both=[$("#gen_brief"),$("#gen_free")],br=($("#brief").value||"").trim();e.style.color="";e.textContent="";
+  if(mode=="brief"&&!br){e.textContent="Écris d’abord tes consignes dans la case.";return}
+  if(PR.story.trim()&&!auto&&!confirm("Remplacer l’histoire actuelle (et ses scènes) par la nouvelle ?"))return;
+  both.forEach(x=>x.disabled=true);const old=b.textContent;b.textContent="Création…";
+  try{const t=await track("scen","✍️ Scénariste","Écriture de l’histoire…",()=>ask("script",`Tu es scénariste pour des vidéos verticales TikTok (1 à 2 minutes). ${mode=="free"?"Invente toi-même une histoire originale de zéro, avec un début, un conflit et une fin.":"Écris une histoire en suivant ces consignes : "+br}
+Personnages déjà créés (réutilise-les si possible) : ${PR.chars.map(c=>c.name+" ("+c.desc+")").join(", ")||"aucun"}.
+Écris en français, avec des dialogues. Réponds UNIQUEMENT en JSON : {"titre":"","personnages":[{"nom":"","description":""}],"histoire":"","scenes":${SCN},"titres":["","",""],"hashtags":"#a #b #c"}
+(scenes = l’histoire découpée en 4 à 8 scènes courtes ; transition = coupe ou fondu)`));
+    const o=J(t);if(!o||!String(o.histoire||"").trim())throw new Error("Réponse IA non exploitable, réessaie.");
+    PR.story=String(o.histoire);PR.scenes=Array.isArray(o.scenes)?mapSc(o.scenes):[];PR.meta={t:o.titres,h:o.hashtags};$("#story").value=PR.story;
+    if(o.titre){PR.ep=String(o.titre);$("#ep").value=PR.ep}
+    (Array.isArray(o.personnages)?o.personnages:[]).forEach(p=>{const n=String(p.nom||"").trim();if(n&&!PR.chars.some(c=>c.name.toLowerCase()==n.toLowerCase()))PR.chars.push({name:n,desc:String(p.description||""),hash:""})});
+    sp();drawChars();drawScenes();e.style.color="var(--ok)";e.textContent="✅ Histoire créée."}
+  catch(er){e.textContent="❌ "+er.message}
+  both.forEach(x=>x.disabled=false);b.textContent=old}
+$("#gen_brief").onclick=()=>genStory("brief");$("#gen_free").onclick=()=>genStory("free");
+/* ===== Casting, voix par personnage, type de modèle ===== */
+const ANI=/fox|horse|donkey|stork|flamingo|parrot|\bcat\b|\bdog\b|wolf|bear|deer|\bcow\b|\bpig\b|sheep|chicken|bird|animal|rabbit|bunny|frog|fish|shark|dragon|lion|tiger|monkey|duck/i,ROB=/robot|xbot|mech|android|droid/i,FEM=/female|woman|girl|witch|lady|michelle|princess|nurse|maid|fille|femme|\banne\b|\bemma\b/i,MAL=/\bmale|\bman\b|boy|guy|soldier|knight|king|cesium|suit|farmer|worker|pirate|cowboy|garçon|homme/i;
+const metaOf=n=>({sp:ANI.test(n)?"animal":ROB.test(n)?"robot":"humain",g:FEM.test(n)?"f":MAL.test(n)?"m":""});
+const VF=["Leda","Zephyr","Kore","Aoede"],VM=["Puck","Charon","Fenrir","Orus"];
+function assignVoices(){const u=new Set(PR.chars.map(c=>c.voice).filter(Boolean));
+  PR.chars.forEach(c=>{if(c.voice)return;const P=c.g=="f"?VF:VM,ord=/adulte|senior/.test(c.age||"")?[...P].reverse():P,v=ord.find(q=>!u.has(q))||ord[0];c.voice=v;u.add(v)});sp()}
+const castAll=()=>track("cast","🎭 Directeur de casting","Analyse des personnages…",async()=>{
+  const names=[...new Set(PR.scenes.flatMap(s=>s.characters))];
+  names.forEach(n=>{if(!PR.chars.some(c=>c.name.toLowerCase()==n.toLowerCase()))PR.chars.push({name:n,desc:"",hash:""})});
+  const need=PR.chars.filter(c=>names.some(n=>n.toLowerCase()==c.name.toLowerCase())&&(!c.sp||!c.g));
+  if(need.length){let o={};
+    try{o=J(await ask("orchestrator",`Tu es le directeur de casting d’un petit film d’animation. Pour chaque personnage, donne son type, son genre, son âge et le ton de sa voix.
+Personnages : ${need.map(c=>c.name+(c.desc?" ("+c.desc+")":"")).join(" ; ")}
+Histoire (extrait) : ${(PR.story||"").slice(0,1200)}
+Réponds UNIQUEMENT en JSON : {"Nom":{"sp":"humain|animal|robot","g":"f|m","age":"enfant|jeune|adulte|senior","tone":"2 ou 3 adjectifs"}}`))}catch(e){o={}}
+    need.forEach(c=>{const r=o[c.name]||{};c.sp=["humain","animal","robot"].includes(r.sp)?r.sp:(c.sp||"humain");c.g=r.g=="f"||r.g=="m"?r.g:(c.g||(/femme|fille|elle|girl|woman|she/i.test(c.desc)?"f":"m"));c.age=r.age||c.age||"jeune";c.tone=r.tone||c.tone||"naturel"})}
+  assignVoices();sp();drawChars();
+  return PR.chars.filter(c=>names.includes(c.name)).map(c=>c.name+" : "+c.sp+(c.g=="f"?" ♀":" ♂")+" · voix "+c.voice).join(" | ")});
+function pcmOf(d){const bin=atob(d),u=new Uint8Array(bin.length);for(let k=0;k<bin.length;k++)u[k]=bin.charCodeAt(k);const i=new Int16Array(u.buffer,0,u.length>>1),f=new Float32Array(i.length);for(let k=0;k<f.length;k++)f[k]=i[k]/32768;return f}
+async function ttsCall(c,text,cfg){REQ++;$("#rq").textContent="Requêtes IA envoyées : "+REQ;
+  const j=await http(`${c.base}/models/gemini-2.5-flash-preview-tts:generateContent`,{method:"POST",headers:{"x-goog-api-key":c.key,"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text}]}],generationConfig:{responseModalities:["AUDIO"],speechConfig:cfg}})});
+  const d=j.candidates?.[0]?.content?.parts?.find(q=>q.inlineData)?.inlineData?.data;if(!d)throw new Error("pas d’audio reçu");return pcmOf(d)}
+async function voiceFor(){const c=conns().find(x=>x.enabled&&x.status=="ok"&&x.p=="gemini");if(!c)throw new Error("la voix demande une clé Gemini valide (onglet IA)");
+  const narr=$("#voice").value,lines=PR.scenes.flatMap(s=>s.dialogue.map(d=>({who:String(d.who||"").trim()||"Narrateur",text:String(d.text||"").trim()}))).filter(l=>l.text);
+  if(!lines.length)throw new Error("aucun dialogue à lire");assignVoices();
+  const info=w=>PR.chars.find(q=>q.name.toLowerCase()==w.toLowerCase())||{},vOf=w=>info(w).voice||narr;
+  const chunks=[];let cur=null;lines.forEach(l=>{if(!cur||(!cur.sp.has(l.who)&&cur.sp.size>=2)||cur.n>1400){cur={sp:new Set(),L:[],n:0};chunks.push(cur)}cur.sp.add(l.who);cur.L.push(l);cur.n+=l.text.length});
+  const parts=[];
+  for(let i=0;i<chunks.length;i++){const k=chunks[i],S=[...k.sp];agSet("vo",5+i/chunks.length*85,"Voix : partie "+(i+1)+"/"+chunks.length+" ("+S.join(" + ")+")");
+    const tones=S.map(n=>n+" : "+(info(n).tone||"naturel")).join(" ; ");let cfg,txt;
+    if(S.length==2){let v0=vOf(S[0]),v1=vOf(S[1]);if(v0==v1)v1=(v0==narr?VM:VM).find(q=>q!=v0)||v1;
+      cfg={multiSpeakerVoiceConfig:{speakerVoiceConfigs:[{speaker:S[0],voiceConfig:{prebuiltVoiceConfig:{voiceName:v0}}},{speaker:S[1],voiceConfig:{prebuiltVoiceConfig:{voiceName:v1}}}]}};
+      txt=`Lis cette scène de dessin animé en français, de façon vivante, chaque personnage avec sa propre émotion (${tones}) :\n`+k.L.map(l=>l.who+": "+l.text).join("\n")}
+    else{cfg={voiceConfig:{prebuiltVoiceConfig:{voiceName:vOf(S[0])}}};txt=`Lis ce texte en français, de façon vivante (${tones}) :\n`+k.L.map(l=>l.text).join(" ")}
+    parts.push(await ttsCall(c,txt,cfg));if(i<chunks.length-1)await sleep(1200)}
+  const gap=3600,tot=parts.reduce((a,p)=>a+p.length,0)+gap*(parts.length-1),out=new Float32Array(tot);let o=0;parts.forEach(p=>{out.set(p,o);o+=p.length+gap});return out}
+const LIB=[];
+const libAll=async()=>{throw new Error("La bibliothèque 3D historique est désactivée. Le studio attend uniquement des rigs 2D Rigby2D réels.")};
+addEventListener("pagehide",()=>{SESS.length=0;G3.m={}});
+const G3={m:{},r:null,sc:null,cam:null,W:0,H:0};
+function animFor(an,action,sp){const f=r=>an.find(a=>r.test(a));if(!sp)return f(/idle|stand/i)||an[0];
+  return(/entr|march|avanc|vien|\bva\b|sort|arriv/i.test(action)&&f(/walk/i))||(/cour|fuit|sprint/i.test(action)&&f(/run/i))||f(/agree|^yes|talk|wave|walk|anim/i)||pickAnim(an,action)||an[0]}
+const LOADERR=[];
+async function load3D(){LOADERR.length=0;if(!window.THREE||!THREE.GLTFLoader)return 0;let n=0;
+  for(const h of new Set(PR.scenes.flatMap(s=>(s.prep?.characters||[]).map(c=>c.hash)))){if(!h)continue;if(G3.m[h]){n++;continue}const a=await getA(h);if(!a||!USABLE.test(a.ext)){LOADERR.push((a?a.name:"?")+" : format "+(a?a.ext:"?")+" non lisible (utilise .glb ou .gltf)");continue}
+    try{const buf=a.ext=="gltf"?await a.blob.text():await a.blob.arrayBuffer(),gl=await new Promise((ok,ko)=>new THREE.GLTFLoader().parse(buf,"",ok,ko)),root=gl.scene,b=new THREE.Box3().setFromObject(root),k=1.8/Math.max(.01,b.max.y-b.min.y);
+      root.scale.multiplyScalar(k);root.position.y=-b.min.y*k;const g=new THREE.Group();g.add(root);const morphs=[];root.traverse(q=>{if(q.isMesh&&q.morphTargetDictionary)for(const k in q.morphTargetDictionary)if(/jawopen|mouthopen|mouth_open|viseme_aa|^aa$|^ah$/i.test(k))morphs.push([q,q.morphTargetDictionary[k]])});
+      G3.m[h]={g,mx:new THREE.AnimationMixer(root),clips:gl.animations,cur:"",rig:findRig(root),morphs};n++}catch(e){LOADERR.push(a.name+" : "+(e.message||e))}}
+  return n}
+/* Animation procédurale : fonctionne avec n'importe quel squelette (Mixamo, Quaternius/UE, Rigify) car chaque os est "visé" en coordonnées monde. */
+let TQ=null;const tq=()=>TQ||(TQ={p:new THREE.Quaternion(),a:new THREE.Vector3(),b:new THREE.Vector3()}),V3=(a,b,c)=>new THREE.Vector3(a,b,c).normalize();
+function applyWorld(bone,dq){if(!bone||!bone.parent)return;const T=tq();bone.parent.getWorldQuaternion(T.p);bone.quaternion.premultiply(T.p).premultiply(dq).premultiply(T.p.clone().invert())}
+function aim(bone,child,dir){if(!bone||!child)return;const T=tq();bone.getWorldPosition(T.a);child.getWorldPosition(T.b);T.b.sub(T.a);if(T.b.lengthSq()<1e-10)return;T.b.normalize();applyWorld(bone,new THREE.Quaternion().setFromUnitVectors(T.b,dir))}
+const rot=(bone,ax,ang)=>{if(bone&&ang)applyWorld(bone,new THREE.Quaternion().setFromAxisAngle(ax,ang))};
+const FING=/^(hand)?(thumb|index|middle|ring|pinky|little)\d*$/;
+function baseOf(n){let b=n.toLowerCase().replace(/mixamorig:?/,"").replace(/left|right/g,"");const sd=sideOf(n);if(sd&&/[lr]$/.test(b.replace(/[^a-z0-9]/g,"")))b=b.replace(/[^a-z0-9]/g,"").slice(0,-1);return b.replace(/[^a-z0-9]/g,"")}
+function sideOf(n){if(/left/i.test(n))return"l";if(/right/i.test(n))return"r";if(/(^|[_.\-:])l([_.\-:]|$)|[a-z0-9]L$/.test(n))return"l";if(/(^|[_.\-:])r([_.\-:]|$)|[a-z0-9]R$/.test(n))return"r";return""}
+function findRig(root){const B=[];root.traverse(o=>{if(o.isBone)B.push(o)});if(B.length<15)return null;
+  const R={all:B,rest:new Map(B.map(b=>[b,b.quaternion.clone()])),spine:[],f:{l:{},r:{}},fin:{l:[],r:[]}},put=(sd,k,b)=>{if(sd&&!R.f[sd][k])R.f[sd][k]=b};
+  B.forEach(b=>{const n=baseOf(b.name),sd=sideOf(b.name);
+    if(/^(hips|pelvis)$/.test(n)){if(!R.hips)R.hips=b}else if(/^(spine\d*|chest|upperchest)$/.test(n))R.spine.push(b);else if(/^neck\d*$/.test(n)){if(!R.neck)R.neck=b}else if(/^head$/.test(n)){if(!R.head)R.head=b}else if(/jaw/.test(n)&&!/end|tip/.test(n)){if(!R.jaw)R.jaw=b}
+    else if(/upperarm|^arm$/.test(n))put(sd,"uarm",b);else if(/lowerarm|forearm/.test(n))put(sd,"farm",b);else if(/^hand$/.test(n))put(sd,"hand",b);
+    else if(/thigh|upleg|upperleg/.test(n))put(sd,"thigh",b);else if(/^(calf|shin|leg|lowerleg)$/.test(n))put(sd,"calf",b);else if(/^foot$/.test(n))put(sd,"foot",b);else if(/^(toe|toes|toebase|ball)$/.test(n))put(sd,"toe",b)});
+  ["l","r"].forEach(sd=>{const h=R.f[sd].hand;if(!h)return;h.children.forEach(c=>{if(!c.isBone||!FING.test(baseOf(c.name)))return;const ch=[c];for(;;){const nx=ch[ch.length-1].children.find(q=>q.isBone&&FING.test(baseOf(q.name)));if(!nx||ch.length>3)break;ch.push(nx)}R.fin[sd].push({k:/thumb/i.test(c.name)?"thumb":/middle/i.test(c.name)?"mid":"f",b:ch})});
+    const mid=R.fin[sd].find(q=>q.k=="mid")||R.fin[sd].find(q=>q.k=="f");if(mid)R.f[sd].mid=mid.b[0]});
+  R.spine.sort((a,b)=>{let da=0,db=0;for(let o=a;o;o=o.parent)da++;for(let o=b;o;o=o.parent)db++;return da-db});
+  return(R.f.l.uarm||R.f.r.uarm||R.f.l.thigh||R.f.r.thigh)?R:null}
+function poseRig(m,o){const R=m.rig,X=new THREE.Vector3(1,0,0),Z=new THREE.Vector3(0,0,1),Y=new THREE.Vector3(0,1,0),t=o.t,w=o.walk,ph=o.ph,env=o.genv!=null?o.genv:o.env,sw=w?Math.sin(ph):0,hp=new THREE.Vector3(),T=tq();
+  R.all.forEach(b=>b.quaternion.copy(R.rest.get(b)));(R.hips||R.all[0]).getWorldPosition(hp);
+  rot(R.hips,Z,w?.05*sw:0);rot(R.hips,Y,w?.08*sw:0);
+  R.spine.forEach(b=>rot(b,X,((w?.07:0)+Math.sin(t*1.7)*.012+(o.sp?.03*env:0))/R.spine.length));
+  rot(R.neck,Y,o.look*(o.sp?.04:.12));rot(R.head,Y,o.look*.2);rot(R.head,X,o.sp?Math.sin(t*1.6)*.05*env:Math.sin(t*.9)*.015);
+  if(R.jaw)rot(R.jaw,X,o.mo*.35);m.morphs.forEach(([me,ix])=>{me.morphTargetInfluences[ix]=o.mo});
+  ["l","r"].forEach(sd=>{const F=R.f[sd];if(!F.uarm)return;F.uarm.getWorldPosition(T.a);const sg=T.a.x>=hp.x?1:-1,act=o.sp&&((o.i%2?1:-1)==sg),ga=act?.3+.7*env:(o.sp?.15*env:0),swing=w?-.5*Math.sin(ph)*sg:0;
+    aim(F.uarm,F.farm,V3(sg*(.2+.9*ga),-1+.95*ga,.05+swing+.5*ga));
+    const fd=V3(sg*(.12-.15*ga),-.85+1.7*ga+.3*ga*Math.sin(t*1.7+sg),.3+.55*ga+(w?.25:0));aim(F.farm,F.hand,fd);
+    const hd=V3(fd.x+sg*.2*ga*Math.sin(t*1.9),fd.y-.15+.15*ga*Math.sin(t*1.5),fd.z);if(F.mid)aim(F.hand,F.mid,hd);
+    const curl=V3(-sg*.6,-.3,.6),open=ga*.6;
+    R.fin[sd].forEach(ch=>{const cum=ch.k=="thumb"?[.1,.2,.3]:[.25,.5,.75];for(let k=0;k<ch.b.length;k++){const b=ch.b[k],c=ch.b[k+1]||b.children.find(q=>q.isBone);if(!c)continue;aim(b,c,hd.clone().lerp(curl,Math.min(1,cum[Math.min(k,2)]*(1-open)+(o.sp?.05*Math.sin(t*1.4+k):0))).normalize())}})});
+  ["l","r"].forEach(sd=>{const F=R.f[sd];if(!F.thigh)return;F.thigh.getWorldPosition(T.a);const sg=T.a.x>=hp.x?1:-1,p=ph+(sg>0?0:Math.PI),a=w?.5*Math.sin(p):0,s=a-(w?.85*Math.max(0,Math.cos(p)):0),sn=Math.sin(p),fl=w?(sn>0?.1-.3*sn:.1-.6*sn):.05;
+    aim(F.thigh,F.calf,V3(sg*.03,-Math.cos(a),Math.sin(a)));aim(F.calf,F.foot,V3(sg*.03,-Math.cos(s),Math.sin(s)));
+    if(F.foot){const c=F.toe||F.foot.children.find(q=>q.isBone);if(c)aim(F.foot,c,V3(sg*.04,-Math.sin(fl),Math.cos(fl)))}
+    if(F.toe&&w&&sn<0)rot(F.toe,X,-.5*sn)})}
+function draw3D(x,W,H,ch,ln,s,t){const R={set:new Set(),vw:0,gap:0};if(!window.THREE)return R;const items=ch.map((c,i)=>({m:G3.m[c.hash],c,i})).filter(o=>o.m);if(!items.length)return R;
+  if(!G3.r){const r=new THREE.WebGLRenderer({alpha:true,antialias:true,preserveDrawingBuffer:true});r.setPixelRatio(1);r.setClearColor(0,0);r.outputEncoding=THREE.sRGBEncoding;G3.r=r;G3.sc=new THREE.Scene();G3.sc.add(new THREE.HemisphereLight(0xffffff,0x555577,1.2));const d=new THREE.DirectionalLight(0xffffff,1);d.position.set(2,4,5);G3.sc.add(d);G3.cam=new THREE.PerspectiveCamera(40,1,.1,100);G3.cam.position.set(0,1.3,7);G3.cam.lookAt(0,1,0)}
+  if(G3.W!=W||G3.H!=H){G3.r.setSize(W,H,false);G3.cam.aspect=W/H;G3.cam.updateProjectionMatrix();G3.W=W;G3.H=H}
+  const n=ch.length,gap=Math.min(1.4,2.2/n),used=[];R.vw=2*7*Math.tan(20*Math.PI/180)*W/H;R.gap=gap;
+  items.forEach(({m,c,i})=>{if(used.includes(m))return;const sp=!!(ln.who&&ln.who.toLowerCase()==c.name.toLowerCase()),px=(i-(n-1)/2)*gap;
+    if(m.rig){const enter=/entr|arriv|vien|avanc/i.test(s.action)&&t<2.4,run=/cour|fuit|sprint/i.test(s.action),walk=enter||run||/march|promen/i.test(s.action),ph=t*(run?9:6)+i*1.7;
+      m.g.position.set(px,walk?Math.abs(Math.sin(ph))*.04:0,enter?-3*(1-Math.min(1,t/2.4)):0);poseRig(m,{t,walk,ph,sp,mo:mouthFor(c,ln,t),env:sp?mouthEnv():0,i,look:i<(n-1)/2?1:-1})}
+    else{const nm=m.clips.map(q=>q.name),an=animFor(nm,s.action,sp),clip=m.clips.find(q=>q.name==an)||m.clips[0];
+      if(clip){if(m.cur!=clip.name){m.mx.stopAllAction();m.mx.clipAction(clip).play();m.cur=clip.name}m.mx.clipAction(clip).time=t%Math.max(.1,clip.duration);m.mx.update(0)}
+      m.g.position.set(px,0,0)}
+    G3.sc.add(m.g);used.push(m);R.set.add(c.name)});
+  G3.r.render(G3.sc,G3.cam);x.drawImage(G3.r.domElement,0,0,W,H);used.forEach(m=>G3.sc.remove(m.g));return R}
+const AV={},BAN=/\b(constructor|eval|Function|import|fetch|window|document|Storage|XMLHttp|globalThis|self|top|parent|this|prototype|setTimeout|setInterval|WebSocket|Worker|require|process)\b|__proto__|\[\s*["'`]/;
+async function avatars(){return"têtes et corps dessinés par le code (0 téléchargement)"}
+function drawCode(x,W,H,s,t){if(!s.code)return;if(s._fn===undefined){try{if(BAN.test(s.code))throw 0;s._fn=new Function("x","W","H","t","window","document","localStorage","fetch","self","globalThis",s.code)}catch(e){s._fn=null}}
+  if(s._fn){x.save();try{s._fn(x,W,H,t)}catch(e){s._fn=null}x.restore()}}
+async function codeAll(){
+  if(!PR.scenes.length)throw new Error("Aucune scène à préparer.");
+  const missing=PR.scenes.map((s,i)=>!s.bg?"scène "+(i+1)+" : aucun décor photo/vidéo importé et choisi":"").filter(Boolean);
+  if(missing.length)throw new Error("Décors réels manquants. "+missing.join(" ; "));
+  const all=await allA();
+  for(let i=0;i<PR.scenes.length;i++){
+    const a=all.find(x=>x.hash===PR.scenes[i].bg);
+    if(!a||!['image','vidéo'].includes(a.kind))throw new Error("Scène "+(i+1)+" : la ressource de décor n'est pas une image ou vidéo importée valide.");
+  }
+  return PR.scenes.length;
+}
+const runInfo=()=>track("info","🏞️ Décors 2D","Vérification des décors importés…",async()=>{
+  const n=await codeAll();return n+" décor(s) importé(s) vérifié(s) ✔";
+});
+function charReport(){const libOn=typeof CFG!="undefined"&&CFG.lib,seen=new Set(),ok=[],fb=[];[...new Set(PR.scenes.flatMap(s=>s.characters||[]))].forEach(n=>{const c=PR.chars.find(q=>q.name.toLowerCase()==n.toLowerCase()),m=c&&c.hash&&G3.m[c.hash];let why="";
+  if(!c||!c.hash)why="aucun modèle assigné";else if(!m)why=LOADERR.length?"modèle illisible":"modèle assigné, pas encore chargé";else if(m.free&&!libOn)why="modèle de la bibliothèque gratuite ignoré (case décochée)";else if(seen.has(c.hash))why="même modèle qu’un autre personnage";
+  if(c&&c.hash)seen.add(c.hash);if(why)fb.push({name:n,why});else ok.push(n)});return{ok,fb}}
+async function graphAll(){const n=PR.scenes.length;GW.length=0;await track("gr","🎨 Agent graphique","Personnages et décors…",async()=>{const all0=await allA(),cat=all0.length,have=new Set(all0.filter(usableAsset).map(a=>a.hash));
+  for(let i=0;i<n;i++){if(!PR.scenes[i].prep||PR.scenes[i].prep.characters.some(c=>!have.has(c.hash)))await agent(i);agSet("gr",(i+1)/n*80,"Scène "+(i+1)+"/"+n)}
+  await load3D();const R=charReport(),rl=(window.S3&&S3.recruitLog)||[],got=rl.filter(x=>x.ok).map(x=>x.name+" ← "+x.msg),miss=rl.filter(x=>!x.ok).slice(-2).map(x=>x.name+" : "+x.msg);return(R.ok.length?"✔ vrai modèle 3D : "+R.ok.join(", "):"✖ aucun vrai modèle 3D")+(R.fb.length?" · ⚠ mannequin du code pour : "+R.fb.map(x=>x.name+" ("+x.why+")").join(", "):"")+(got.length?" · recrutés : "+got.join(" ; "):"")+(miss.length?" · recherche : "+miss.join(" | "):"")+(LOADERR.length?" · ⚠ "+LOADERR.slice(0,2).join(" | "):"")});drawScenes()}
+$("#go").onclick=async()=>{const e=$("#e4"),b=$("#go");
+  e.textContent="";b.disabled=true;AG.forEach(a=>agSet(a[0],0,a[2]+" · en attente",""));
+  try{
+    if(!PR.story.trim()){await genStory(($("#brief").value||"").trim()?"brief":"free",true);if(!PR.story.trim())throw new Error($("#e3").textContent||"Histoire non créée.");}else agSet("scen",100,"Histoire déjà écrite : gardée ✔","ok");
+    if(PR.scenes.length)agSet("orch",100,"Scènes déjà prêtes ✔","ok");
+    else{await $("#split").onclick();if(!PR.scenes.length)throw new Error($("#e2").textContent||"Découpage échoué.");}
+    await castAll();
+    await window.prepareCharacters2D();
+    await window.planAnimations2D();
+    await runInfo();
+    await window.libAll2D();
+    await window.archAll2D();
+    await window.graphAll2D();
+    await window.qcAll2D();
+    await window.exportVideo();
+  }catch(er){e.textContent="❌ Production arrêtée : "+er.message;}
+  finally{b.disabled=false}
+};
+const VERB=[[/entr|march|avanc|vien|va\b|sort|arriv|march/i,/walk/i],[/cour|fuit|pourchas|sprint/i,/run|sprint/i],[/salu|bonjour/i,/wave|hello/i],[/assi/i,/sit/i],[/parl|discut|dit|demand|répond/i,/talk|speak|idle/i],[/saut/i,/jump/i],[/frapp|combat|bat/i,/punch|attack|fight/i]];
+function pickAnim(anims,action){if(!anims.length)return null;for(const[v,r]of VERB)if(v.test(action)){const m=anims.find(a=>r.test(a));if(m)return m}return anims.find(a=>/idle/i.test(a))||anims[0]}
+const GW=[];
+const qcAll=()=>track("qc","✅ Contrôleur qualité","Vérification…",async()=>{const names=[...new Set(PR.scenes.flatMap(s=>s.characters))],bad=[],all=await allA();
+  names.forEach(n=>{const c=PR.chars.find(q=>q.name.toLowerCase()==n.toLowerCase());if(!c){bad.push(n+" : profil manquant");return}
+    if(!c.voice)bad.push(n+" : pas de voix");const a=all.find(x=>x.hash==c.hash);if(!a)bad.push(n+" : pas de modèle 3D (corps animé par le code)");else if(metaOf(a.name).sp!=(c.sp||"humain"))bad.push(n+" : modèle "+a.name+" ne correspond pas au type "+(c.sp||"humain"));else if(!(G3.m[a.hash]&&G3.m[a.hash].rig)&&!(a.anims||[]).length)bad.push(n+" : "+a.name+" n’a ni squelette reconnu ni animation")});
+  const v=PR.chars.filter(c=>names.includes(c.name)).map(c=>c.voice);if(new Set(v).size<v.length)bad.push("deux personnages ont la même voix");
+  if(bad.length){agSet("qc",100,"⚠ "+bad.join(" · "),"bad");return"⚠ "+bad.join(" · ")}return"Tout est cohérent ✔ ("+names.length+" personnage(s))"});
+function usableAsset(x){return x.kind=="personnage"&&USABLE.test(x.ext)&&!PIECE.test(x.name)&&!(/biblioth/i.test(x.pack||"")&&!(typeof CFG!="undefined"&&CFG.lib))}
+async function recruitFor(sc){const S=window.S3;if(!S||!S.recruit)return;const all=(await allA()).filter(usableAsset),have=new Set(all.map(x=>x.hash)),used=new Set(),need=[];
+  for(const n of sc.characters){let c=PR.chars.find(q=>q.name.toLowerCase()==n.toLowerCase());if(!c){c={name:n,desc:"",hash:""};PR.chars.push(c)}
+    if(c.hash&&have.has(c.hash)){used.add(c.hash);continue}
+    const mh=S.memModel&&S.memModel(n);if(mh&&have.has(mh)&&!used.has(mh)){c.hash=mh;used.add(mh);continue}
+    const sp=c.sp||"humain",fit=all.some(x=>!used.has(x.hash)&&(()=>{const m=metaOf(x.name);return m.sp==sp&&(!c.g||!m.g||m.g==c.g)})());
+    if(!fit)need.push(c)}
+  const groups={};need.forEach(c=>(groups[(c.g||"")+"|"+(c.age||"")]=groups[(c.g||"")+"|"+(c.age||"")]||[]).push(c));
+  await Promise.all(Object.values(groups).map(async g=>{for(const c of g){try{const h=await S.recruit(c,sc);if(h){c.hash=h}}catch(e){S.recruitLog.push({name:c.name,ok:false,msg:String(e.message||e)})}}}));
+  S.bibSync&&S.bibSync()}
+async function agent(i){const sc=PR.scenes[i];await recruitFor(sc);const all=await allA(),chs=all.filter(usableAsset),envs=all.filter(x=>x.kind=="environnement");
+  sc.characters.forEach(n=>{if(!PR.chars.some(c=>c.name.toLowerCase()==n.toLowerCase()))PR.chars.push({name:n,desc:"",hash:""})});
+  const mine=sc.characters.map(n=>PR.chars.find(c=>c.name.toLowerCase()==n.toLowerCase())),used=new Set(mine.map(c=>c.hash).filter(Boolean)),missing=mine.filter(c=>!c.hash||!chs.some(x=>x.hash==c.hash));
+  
+  const needEnv=envs.length>0&&!(sc.prep&&sc.prep.environment);let pick={};
+  const okFor=(c,x)=>{const m=metaOf(x.name);return m.sp==(c.sp||"humain")&&(!c.g||!m.g||m.g==c.g)};
+  const CL=missing.map(c=>{let l=chs.filter(x=>!used.has(x.hash)&&okFor(c,x));if(!l.length)l=chs.filter(x=>!used.has(x.hash)&&metaOf(x.name).sp==(c.sp||"humain"));return l.slice(0,40)});
+  const amb=CL.some(l=>l.length>1);
+  if(amb||needEnv){pick=J(await ask("orchestrator",`Tu es l’agent graphique. Scène « ${sc.title} » (lieu : ${sc.location} ; action : ${sc.action}).
+${amb?missing.map((c,k)=>"Personnage « "+c.name+" » ("+(c.desc||"")+", "+(c.sp||"humain")+", "+(c.g=="f"?"féminin":"masculin")+") — modèles possibles : "+CL[k].map((x,q)=>q+"="+x.name).join(" ; ")).join("\n"):""}
+${needEnv?"Environnements : "+envs.slice(0,60).map((x,k)=>k+"="+x.name).join(" ; "):""}
+Choisis le modèle qui correspond le mieux à la description de chaque personnage. Réponds UNIQUEMENT en JSON : {"characters":{"Nom":numéro_dans_sa_liste},"environment":numéro_ou_null}`))}
+  missing.forEach((c,k)=>{const l=CL[k];let n=pick.characters?.[c.name],x=Number.isInteger(n)?l[n]:null;if(!x||used.has(x.hash))x=l.find(y=>!used.has(y.hash));if(x){c.hash=x.hash;used.add(x.hash)}else{c.hash="";if(!GW.includes(c.name))GW.push(c.name)}});
+  const env=Number.isInteger(pick.environment)?envs[pick.environment]:null,out=[];
+  for(const c of mine){const x=chs.find(y=>y.hash==c.hash)||await getA(c.hash);out.push({name:c.name,asset:x?x.name:"?",hash:c.hash,anim:x?pickAnim(x.anims||[],sc.action):null})}
+  sc.prep={characters:out,environment:env?{name:env.name,hash:env.hash}:(sc.prep&&sc.prep.environment)||null};sp()}
+function drawScenes(){$("#scenes").innerHTML=PR.scenes.map((s,i)=>`<div class="card"><h2>${i+1}. ${esc(s.title)}</h2><p class="note">${esc(s.location)} · ${esc(s.camera)} · transition : ${esc(s.transition)}</p><p>${esc(s.action)}</p>
+${s.dialogue.map(d=>`<p class="note"><b>${esc(d.who)}</b> : ${esc(d.text)}</p>`).join("")}
+${s.prep?`<p class="note">Personnages : ${s.prep.characters.map(c=>esc(c.name)+" → "+esc(c.asset)+(c.anim?" ("+esc(c.anim)+")":" (animation non disponible)")).join(" · ")}<br>Environnement : ${s.prep.environment?esc(s.prep.environment.name):"aucun dans le catalogue"}</p>`:""}</div>`).join("");drawChars()}
+$("#scenes").onclick=async e=>{const i=e.target.dataset.g;if(i==null)return;e.target.disabled=true;try{await track("gr","🎨 Agent graphique","Association des rigs 2D…",()=>agent(+i));drawScenes()}catch(er){$("#eg"+i).textContent="❌ "+er.message;e.target.disabled=false}};
+$("#exp").onclick=()=>{const o={format:"vertical 9:16 (1080x1920)",episode:PR.ep,characters:PR.chars,scenes:PR.scenes},a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(o,null,2)],{type:"application/json"}));a.download=(PR.ep||"episode").replace(/\W+/g,"_")+".json";a.click()};
+
+/* ===== 5. Export vidéo : repris de Alpha_10 (WebCodecs + mp4-muxer, repli MediaRecorder, sous-titres mot par mot, fondu entre coupes) ===== */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function wcOK(W,H){try{if(!window.VideoEncoder||!window.VideoFrame||!window.Mp4Muxer)return null;const vc={codec:"avc1.640028",width:W,height:H,bitrate:W>800?5e6:2.5e6,framerate:30};const ac={codec:"mp4a.40.2",sampleRate:48000,numberOfChannels:1,bitrate:128000},aok=!!(window.AudioEncoder&&(await AudioEncoder.isConfigSupported(ac)).supported);return(await VideoEncoder.isConfigSupported(vc)).supported?{vc,ac:aok?ac:null}:null}catch(e){return null}}
+function capChunks(txt){const w=txt.trim().split(/\s+/),out=[];let cur=[];w.forEach(x=>{cur.push(x);if(cur.length>=6||(/[.,;:!?…]$/.test(x)&&cur.length>=3)){out.push(cur.join(" "));cur=[]}});if(cur.length)out.push(cur.join(" "));if(out.length>1&&out[out.length-1].split(" ").length<2)out[out.length-2]+=" "+out.pop();return out}
+const wcount=t=>Math.max(1,String(t).trim().split(/\s+/).length);
+function timeline(D){let a=0;const R=PR.scenes.map(s=>{const L=(s.dialogue.length?s.dialogue:[{}]).map(d=>({who:String(d.who||""),text:String(d.text||""),len:d.text?Math.max(1.5,wcount(d.text)*.4+.3):3})),len=L.reduce((q,l)=>q+l.len,0),o={s,L,t0:a,len};a+=len;return o});if(D){const k=D/a;a=0;R.forEach(o=>{o.L.forEach(l=>l.len*=k);o.len*=k;o.t0=a;a+=o.len})}return R}
+function caption(x,W,H,ln,e){if(!ln.text.trim())return;const ch=ln._ch||(ln._ch=capChunks(ln.text)),tot=ch.reduce((a,c)=>a+c.length,0);let f=Math.max(0,e/ln.len)*tot,ix=0;for(;ix<ch.length-1&&f>=ch[ix].length;ix++)f-=ch[ix].length;
+  const ws=ch[ix].split(" "),hi=Math.min(ws.length-1,Math.floor(Math.max(0,Math.min(.999,f/Math.max(1,ch[ix].length)))*ws.length));
+  x.font=`800 ${Math.round(W*.068)}px system-ui,sans-serif`;x.textAlign="left";x.lineJoin="round";x.lineWidth=W*.016;x.strokeStyle="#000";
+  const sp=x.measureText(" ").width,maxW=W*.84,lines=[];let cur=[],cw=0;
+  ws.forEach((w,i)=>{const ww=x.measureText(w).width;if(cur.length&&cw+sp+ww>maxW){lines.push({w:cur,cw});cur=[];cw=0}cur.push({w,i,ww});cw+=(cur.length>1?sp:0)+ww});lines.push({w:cur,cw});
+  lines.forEach((L,n)=>{let px=(W-L.cw)/2;const y=H*.8+(n-(lines.length-1)/2)*W*.085;L.w.forEach(o=>{x.strokeText(o.w,px,y);x.fillStyle=o.i==hi?"#ffd23f":"#fff";x.fillText(o.w,px,y);px+=o.ww+sp})})}
+/* Rendu de scène : aperçu schématique 2D (décor + silhouettes étiquetées avec le modèle 3D choisi). Point d'extension : remplacer cette fonction par un rendu 3D. */
+const CUR={gt:0};let LIP=null;
+function buildEnv(f){const hop=240,n=Math.floor(f.length/hop),e=new Float32Array(n),z=new Float32Array(n);let mx=1e-4;
+  for(let i=0;i<n;i++){let s=0,c=0,p=0;for(let k=0;k<hop;k++){const v=f[i*hop+k];s+=v*v;if(k&&(v>0)!=(p>0))c++;p=v}e[i]=Math.sqrt(s/hop);z[i]=Math.min(1,c/hop/.22);if(e[i]>mx)mx=e[i]}
+  const g=mx*.55;for(let i=0;i<n;i++){e[i]=Math.min(1,e[i]/g);if(e[i]<.09)e[i]=0}
+  for(let i=1;i<n;i++){e[i]=e[i-1]*.3+e[i]*.7;z[i]=z[i-1]*.8+z[i]*.2}return{e,z,hop:hop/24000}}
+const mouthAt=g=>LIP?LIP.e[Math.min(LIP.e.length-1,Math.max(0,Math.round(g/LIP.hop)))]||0:0;
+const wideAt=g=>LIP?LIP.z[Math.min(LIP.z.length-1,Math.max(0,Math.round(g/LIP.hop)))]||0:.5;
+function mouthEnv(){if(!LIP)return .45;const i=Math.round(CUR.gt/LIP.hop);let s=0,c=0;for(let k=-20;k<=20;k+=4){const v=LIP.e[i+k];if(v!=null){s+=v;c++}}return c?s/c:0}
+function mouthFor(c,ln,t){const me=ln&&ln.who&&ln.text&&ln.who.toLowerCase()==c.name.toLowerCase();if(!me)return 0;return LIP?mouthAt(CUR.gt):Math.abs(Math.sin(t*9))*.7}
+/* recale les frontières entre répliques sur les vrais silences de la voix */
+function snapTL(tl){if(!LIP)return tl;const fl=[];tl.forEach(o=>o.L.forEach(l=>fl.push(l)));let a=0;const bd=fl.map(l=>a+=l.len);
+  for(let i=0;i<fl.length-1;i++){if(!fl[i].text||!fl[i+1].text)continue;const c=bd[i],lo=Math.max((i?bd[i-1]:0)+.3,c-.8),hi=Math.min(bd[i+1]-.3,c+.8);if(hi<=lo)continue;let best=c,bv=9;
+    for(let q=lo;q<=hi;q+=.02){const v=LIP.e[Math.min(LIP.e.length-1,Math.round(q/LIP.hop))];if(v<bv-1e-4||(Math.abs(v-bv)<1e-4&&Math.abs(q-c)<Math.abs(best-c))){bv=v;best=q}}bd[i]=best}
+  let p=0;fl.forEach((l,i)=>{l.len=bd[i]-p;p=bd[i]});a=0;tl.forEach(o=>{o.t0=a;o.len=o.L.reduce((q,l)=>q+l.len,0);a+=o.len});return tl}
+function figure(x,cx,y0,h,c,sp,t,act,i,mo,n){
+  const hs=[...c.name].reduce((a,q)=>a+q.charCodeAt(0),0),hu=(i*97+hs*37)%360,fem=c.g=="f",skin="#f2b68a",run=/cour|fuit|sprint/i.test(act),walk=run||/entr|march|avanc|vien|\bva\b|sort|arriv/i.test(act),ph=t*(run?11:7)+i*1.3,sw=walk?Math.sin(ph):0,env=sp?mouthEnv():0,bob=walk?Math.abs(sw)*h*.02:Math.sin(t*2+i)*h*.005,
+    hd=h*.3,hipY=y0-bob-h*.4,shY=hipY-h*.3,uaL=h*.15,faL=h*.14,look=i<(n-1)/2?1:-1;
+  const P=(px,py,len,a,d)=>[px+d*Math.sin(a)*len,py+Math.cos(a)*len],S=(a,b,w,col)=>{x.strokeStyle=col;x.lineWidth=w;x.beginPath();x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);x.stroke()},dot=(p,r,col)=>{x.fillStyle=col;x.beginPath();x.arc(p[0],p[1],r,0,7);x.fill()};
+  x.save();x.lineCap="round";x.lineJoin="round";dot([cx,y0+h*.01],0,"#0000");x.fillStyle="#0004";x.beginPath();x.ellipse(cx,y0+h*.01,h*.17,h*.025,0,0,7);x.fill();
+  const pant="#2b2f4a",shoe="#15151f",shirt=`hsl(${hu},60%,52%)`,sleeve=`hsl(${hu},60%,46%)`;
+  /* jambes : hanche - genou - cheville - pied (talon/orteils) */
+  [-1,1].forEach(d=>{const lift=walk?Math.max(0,Math.sin(ph+(d>0?0:Math.PI))):0,hip=[cx+d*h*.05,hipY],ank=[cx+d*h*.075,y0-h*.035-lift*h*.13],kn=[(hip[0]+ank[0])/2+d*h*.035,(hip[1]+ank[1])/2-lift*h*.05];
+    S(hip,kn,h*.075,pant);S(kn,ank,h*.065,pant);dot(kn,h*.034,pant);const toe=[ank[0]+d*h*.07,ank[1]+h*.03+lift*h*.035];S(ank,toe,h*.05,shoe);dot([ank[0]-d*h*.012,ank[1]+h*.015],h*.03,shoe)});
+  /* torse */
+  x.fillStyle=shirt;x.beginPath();x.ellipse(cx,(hipY+shY)/2,h*.12,(hipY-shY)/2+h*.02,0,0,7);x.fill();
+  if(fem){x.beginPath();x.moveTo(cx-h*.1,hipY-h*.05);x.lineTo(cx+h*.1,hipY-h*.05);x.lineTo(cx+h*.17,hipY+h*.12);x.lineTo(cx-h*.17,hipY+h*.12);x.closePath();x.fill()}
+  /* bras : épaule - coude - poignet - paume - doigts à 2 phalanges - pouce */
+  [-1,1].forEach(d=>{const act1=sp&&((i%2?1:-1)==d),ga=act1?.3+.7*env:(sp?.12*env:0),sx=cx+d*h*.12,sy=shY+h*.03,
+      a1=.2+(walk?-.35*sw*d:Math.sin(t*1.8+i+d)*.03)+ga*1.0,bend=.35+(walk?.25:0)+ga*1.55+Math.sin(t*5+d)*.25*ga,el=P(sx,sy,uaL,a1,d),a2=a1+bend,wr=P(el[0],el[1],faL,a2,d),a3=a2+Math.sin(t*7+d)*.3*ga+.1;
+    S([sx,sy],el,h*.058,sleeve);dot(el,h*.03,sleeve);S(el,wr,h*.05,sleeve);
+    const pm=P(wr[0],wr[1],h*.022,a3,d),cl=.6-.5*ga;dot(pm,h*.026,skin);
+    [-.42,-.14,.14,.42].forEach(sp2=>{const L1=h*(.032-Math.abs(sp2)*.012),ang=a3+sp2,f1=P(pm[0],pm[1],L1,ang,d),f2=P(f1[0],f1[1],L1*.85,ang-cl*d*.9,d);S(pm,f1,h*.013,skin);S(f1,f2,h*.012,skin)});
+    const th=P(pm[0],pm[1],h*.028,a3-.9,d);S(pm,th,h*.014,skin)});
+  /* tête + visage : bouche calée sur la voix */
+  x.translate(cx,shY);const talk=env?Math.sin(t*9)*.04*env:0;x.rotate(talk+(walk?sw*.03:0));
+  const hc=`hsl(${(hs*53)%360},45%,${fem?30:22}%)`;S([0,0],[0,-hd*.2],hd*.22,skin);
+  if(fem){x.fillStyle=hc;x.beginPath();x.ellipse(0,-hd*.55,hd*.62,hd*.75,0,0,7);x.fill()}
+  x.fillStyle=skin;x.beginPath();x.ellipse(0,-hd*.58,hd*.5,hd*.56,0,0,7);x.fill();
+  x.fillStyle=hc;x.beginPath();x.arc(0,-hd*.64,hd*.53,Math.PI*1.04,Math.PI*1.96);x.closePath();x.fill();
+  const bl=(t+i)%3.6<.12?.15:1;[-1,1].forEach(d=>{const ex=d*hd*.2,ey=-hd*.6;x.fillStyle="#fff";x.beginPath();x.ellipse(ex,ey,hd*.09,hd*.1*bl,0,0,7);x.fill();x.fillStyle="#222";x.beginPath();x.arc(ex+look*hd*.03,ey,hd*.045*bl,0,7);x.fill();
+    x.strokeStyle=hc;x.lineWidth=hd*.03;x.beginPath();x.moveTo(ex-hd*.1,ey-hd*.16-env*hd*.03);x.lineTo(ex+hd*.1,ey-hd*.17-env*hd*.03);x.stroke()});
+  const my=-hd*.3,wd=hd*(.13+.09*(sp?wideAt(CUR.gt):.4));
+  if(mo<.06){x.strokeStyle="#8a3a3a";x.lineWidth=hd*.03;x.beginPath();x.arc(0,my-hd*.04,wd,.25,Math.PI-.25);x.stroke()}
+  else{const oh=hd*(.03+.17*Math.min(1,mo));x.fillStyle="#5a1a1a";x.beginPath();x.ellipse(0,my,wd,oh,0,0,7);x.fill();if(oh>hd*.08){x.fillStyle="#fff";x.fillRect(-wd*.6,my-oh*.9,wd*1.2,oh*.3);x.fillStyle="#c25a5a";x.beginPath();x.ellipse(0,my+oh*.45,wd*.5,oh*.4,0,0,7);x.fill()}}
+  x.restore()}
+function paintScene(){throw new Error("Ancien moteur Canvas/3D désactivé. Le rendu doit passer par le runtime Rigby2D validé.")}
+async function exportVideo(){const st=$("#xs"),b=$("#vx");if(!PR.scenes.length){st.textContent="Aucune scène : découpe d’abord l’histoire.";return}b.disabled=true;window.__EXPORTING=true;agRow("mont","🎞️ Monteur vidéo");agSet("mont",1,"Préparation du montage…");
+  try{let VP=null;if($("#vox").checked){try{VP=await track("vo","🎙️ Voix","Génération de la voix…",()=>voiceFor(PR.scenes.flatMap(s=>s.dialogue.map(d=>String(d.text||""))).filter(Boolean).join(" ")))}catch(er){agSet("vo",0,"Voix indisponible : "+er.message+" → vidéo sans voix","bad")}}LIP=VP?buildEnv(VP):null;const W=+$("#res").value,H=Math.round(W*16/9/2)*2,tl=snapTL(timeline(VP?VP.length/24000:0)),T=tl.reduce((a,o)=>a+o.len,0),subs=$("#subs").checked,c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d"),wc=await wcOK(W,H),snap=document.createElement("canvas");snap.width=W;snap.height=H;let has=false,blob,ext="mp4";
+    const frame=t=>{let i=tl.length-1;while(i>0&&t<tl[i].t0)i--;const o=tl[i],lt=t-o.t0;paintScene(x,W,H,o,lt,subs);if(i>0&&lt<.12){x.globalAlpha=1-lt/.12;x.fillStyle="#000";x.fillRect(0,0,W,H);x.globalAlpha=1}if(o.len-lt<=1/30){snap.getContext("2d").drawImage(c,0,0);has=true}};
+    if(wc){const target=new Mp4Muxer.ArrayBufferTarget(),mux=new Mp4Muxer.Muxer({target,video:{codec:"avc",width:W,height:H},...(VP&&wc.ac?{audio:{codec:"aac",sampleRate:48000,numberOfChannels:1}}:{}),fastStart:"in-memory"});let ee=null;const ve=new VideoEncoder({output:(k,m)=>mux.addVideoChunk(k,m),error:er=>ee=er});ve.configure(wc.vc);const N=Math.round(T*30);
+      for(let n=0;n<N;n++){if(ee)throw ee;frame(n/30);const f=new VideoFrame(c,{timestamp:Math.round(n/30*1e6),duration:33333});ve.encode(f,{keyFrame:n%60==0});f.close();if(ve.encodeQueueSize>6)while(ve.encodeQueueSize>1)await sleep(10);if(n%15==0){st.textContent=`Encodage ${Math.round(n/N*100)} %`;agSet("mont",Math.round(n/N*95),"Encodage de la vidéo…");await sleep(0)}}
+      await ve.flush();
+      if(VP&&wc.ac){const off=new OfflineAudioContext(1,Math.ceil(T*48000),48000),ab=off.createBuffer(1,VP.length,24000);ab.copyToChannel(VP,0);const bs=off.createBufferSource();bs.buffer=ab;bs.connect(off.destination);bs.start();const pcm=(await off.startRendering()).getChannelData(0),ae=new AudioEncoder({output:(k,m)=>mux.addAudioChunk(k,m),error:er=>ee=er});ae.configure(wc.ac);
+        for(let o=0;o<pcm.length;o+=4800){const n=Math.min(4800,pcm.length-o),d=new AudioData({format:"f32-planar",sampleRate:48000,numberOfFrames:n,numberOfChannels:1,timestamp:Math.round(o/48e3*1e6),data:pcm.slice(o,o+n)});ae.encode(d);d.close()}await ae.flush()}
+      mux.finalize();blob=new Blob([target.buffer],{type:"video/mp4"})}
+    else{const mime=["video/mp4;codecs=avc1","video/mp4","video/webm;codecs=vp9","video/webm"].find(m=>MediaRecorder.isTypeSupported(m));if(!mime)throw new Error("Ce navigateur ne sait pas enregistrer de vidéo : utilise Chrome.");
+      const ch=[],rec=new MediaRecorder(c.captureStream(30),{mimeType:mime,videoBitsPerSecond:W>800?5e6:3e6}),done=new Promise(r=>rec.onstop=r);rec.ondataavailable=e=>e.data.size&&ch.push(e.data);rec.start(500);const t0=performance.now();
+      await new Promise(res=>{const lp=()=>{const t=(performance.now()-t0)/1000;if(t>=T)return res();frame(t);st.textContent=`Enregistrement en direct ${Math.round(t/T*100)} % (garde l’onglet visible)`;agSet("mont",Math.round(t/T*95),"Enregistrement en direct (garde l’onglet visible)");requestAnimationFrame(lp)};lp()});
+      rec.stop();await done;blob=new Blob(ch,{type:mime.split(";")[0]});ext=mime.startsWith("video/mp4")?"mp4":"webm"}
+    const url=URL.createObjectURL(blob),v=document.createElement("video");v.src=url;v.controls=true;v.playsInline=true;v.style.cssText="width:100%;max-height:520px;border-radius:12px;margin-top:10px;background:#000";
+    const a=document.createElement("a");a.href=url;a.download=(PR.ep||"histoire").replace(/\W+/g,"_")+"."+ext;a.textContent="⬇ Télécharger ("+ext.toUpperCase()+")";a.style.cssText="display:block;text-align:center;background:var(--acc);color:#2a1a00;border-radius:12px;padding:14px;font-weight:600;text-decoration:none;margin-top:8px";
+    a.style.display="none";const w=document.createElement("div"),okb=document.createElement("button"),hint=document.createElement("p");okb.textContent="✅ Le rendu me plaît : télécharger";okb.style.cssText="width:100%;margin-top:8px;padding:14px";okb.onclick=()=>a.click();hint.className="note";hint.textContent="Regarde d’abord la vidéo. Si le rendu te plaît, télécharge-la.";w.append(v,hint,okb,a);$("#out").prepend(w);agSet("mont",100,"Vidéo prête : regarde-la dans l’aperçu ✔","ok");suggestTitles(w);st.textContent=`Terminé : ${T.toFixed(1)} s · ${W}×${H} vertical · `+(wc?"MP4 H.264"+(VP&&wc.ac?" + voix":"")+" (durée exacte)":"enregistrement navigateur")}
+  catch(er){st.textContent="❌ "+er.message;agSet("mont",AGS.mont?AGS.mont.p:0,"Échec : "+er.message,"bad")}window.__EXPORTING=false;b.disabled=false}
+async function suggestTitles(w){const box=document.createElement("div");box.className="card";box.style.margin="10px 0 0";box.innerHTML='<b>📝 Titre proposé</b><p class="note">Recherche en cours…</p>';w.append(box);
+  try{const o=PR.meta&&Array.isArray(PR.meta.t)&&PR.meta.t.length?(agSet("titre",100,"Terminé ✔ (déjà reçu avec l’histoire : 0 requête en plus)","ok"),{titres:PR.meta.t,hashtags:PR.meta.h}):J(await track("titre","📝 Agent titres","Recherche de titres…",()=>ask("text",`Propose 3 titres courts et accrocheurs pour une vidéo verticale TikTok, en français, et une ligne de hashtags.
+Épisode : ${PR.ep||"sans titre"}. Histoire : ${PR.story.slice(0,1500)}
+Réponds UNIQUEMENT en JSON : {"titres":["","",""],"hashtags":"#a #b #c"}`)));
+    const T=(Array.isArray(o.titres)?o.titres:[]).map(String).filter(Boolean).slice(0,3),H=String(o.hashtags||"");if(!T.length)throw new Error("Réponse IA non exploitable.");
+    box.innerHTML="<b>📝 Titres proposés</b>";
+    [...T,...(H?[H]:[])].forEach(x=>{const r=document.createElement("div"),p=document.createElement("p"),c=document.createElement("button");r.className="it";p.style.margin="0 0 6px";p.textContent=x;c.className="g";c.textContent="Copier";c.onclick=()=>copyTxt(x,c);r.append(p,c);box.append(r)})}
+  catch(er){box.innerHTML="";const p=document.createElement("p");p.className="note";p.textContent="Titres non disponibles : "+er.message;box.append(p)}}
+$("#vx").onclick=exportVideo;
+
+/* ===== Onglets ===== */
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x==b));["ia","res","his"].forEach(t=>$("#t_"+t).classList.toggle("hide",t!=b.dataset.t));if(b.dataset.t=="res")drawCat();if(b.dataset.t=="his")drawChars()});
+$("#story").value=PR.story;$("#ep").value=PR.ep;drawC();drawScenes();
+</script>
+<script>
+try{(()=>{
+/* ===== v11 : tous les fichiers · décors photo/vidéo · Architecte de quartier low poly ===== */
+const $=s=>document.querySelector(s),savePR=()=>LS.set("sf_proj",PR),clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const ext=n=>(String(n).match(/\.([a-z0-9]+)$/i)||["",""])[1].toLowerCase();
+const T3=/^(glb|gltf|fbx|obj|zip|bin)$/,IM=/^(png|jpe?g|webp|gif|bmp|avif)$/,VD=/^(mp4|webm|mov|m4v|ogv|mkv)$/,AU=/^(mp3|wav|ogg|m4a|aac|flac)$/;
+const toInt=c=>parseInt(String(c).slice(1),16),hx=c=>typeof c=="string"&&/^#[0-9a-f]{6}$/i.test(c.trim())?c.trim().toLowerCase():null;
+const num=(v,d,a,b)=>v!==null&&v!==undefined&&v!==""&&Number.isFinite(+v)?clamp(+v,a,b):d;
+
+/* ---------- Quartier : réglages par défaut = ton fichier quartier-lowpoly.html ---------- */
+const DEF={sky:"#a6dcea",ground:"#a8dca0",road:"#3a3a46",pal:["#f5c518","#f08a24","#e4572e","#2fb5a8","#f3e9d2","#8b6cff","#ff8fab","#4aa3ff"],roof:["#b5233a","#3b2f4a","#2a6f6a","#7a3b1d"],car:["#e4572e","#f5c518","#4aa3ff","#f3e9d2","#2fb5a8","#8b6cff","#f08a24"],tw:1,hs:1,mx:1,hmin:10,hmax:30,trees:1,cars:16,time:"day",lit:.7,seed:11,az:.45,name:"Quartier modèle"};
+const fillArr=(a,def,n)=>{const r=(Array.isArray(a)?a:[]).map(hx).filter(Boolean);for(const d of def){if(r.length>=n)break;if(!r.includes(d))r.push(d)}return r.slice(0,n)};
+function norm(o){o=o||{};const time=["day","dusk","night"].includes(o.time)?o.time:"day",hmax=num(o.hmax,DEF.hmax,16,46);
+  return{...o,sky:hx(o.sky)||DEF.sky,ground:hx(o.ground)||DEF.ground,road:hx(o.road)||DEF.road,pal:fillArr(o.pal,DEF.pal,8),roof:fillArr(o.roof,DEF.roof,4),car:fillArr(o.car,DEF.car,7),
+    tw:num(o.towers??o.tw,1,0,2),hs:num(o.houses??o.hs,1,0,2),mx:num(o.mixed??o.mx,1,0,2),hmin:num(o.hmin,10,6,16),hmax,trees:num(o.trees,1,.5,2.6),cars:Math.round(num(o.cars,16,6,24)),time,
+    lit:num(o.lit,time=="night"?.92:time=="dusk"?.82:.7,0,1),seed:Math.round(num(o.seed,11,1,99999)),az:num(o.az,.45,-3.2,3.2),name:String(o.name||DEF.name).slice(0,60)}}
+
+/* ---------- Constructeur de quartier low poly (repris de quartier-lowpoly.html, paramétré) ---------- */
+function buildDistrict(S){const T=THREE;let seed=(S.seed|0)||11;
+  const rnd=()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296},pick=a=>a[Math.floor(rnd()*a.length)];
+  const N=S.time=="night",D=S.time=="dusk",sky=toInt(S.sky),sc=new T.Scene();
+  sc.background=new T.Color(sky);sc.fog=new T.Fog(sky,80,200);
+  sc.add(new T.AmbientLight(N?0x8c9cff:D?0xffd8b8:0xffffff,N?.4:D?.72:.88));
+  const sun=new T.DirectionalLight(N?0x9aaaff:D?0xffa860:0xffffff,N?.2:D?.55:.42);sun.position.set(25,50,30);sc.add(sun);
+  const MT={},GT={},BT={},mat=c=>MT[c]||(MT[c]=new T.MeshLambertMaterial({color:c,flatShading:true,side:T.DoubleSide})),bas=c=>BT[c]||(BT[c]=new T.MeshBasicMaterial({color:c})),geo=(k,f)=>GT[k]||(GT[k]=f());
+  const put=(m,x,y,z,p)=>{m.position.set(x,y,z);(p||sc).add(m);return m};
+  const bx=(w,h,d,c,x,y,z,p)=>put(new T.Mesh(geo("b"+[w,h,d],()=>new T.BoxGeometry(w,h,d)),mat(c)),x,y,z,p);
+  const cy=(r1,r2,h,s,c,x,y,z,p)=>put(new T.Mesh(geo("c"+[r1,r2,h,s],()=>new T.CylinderGeometry(r1,r2,h,s)),mat(c)),x,y,z,p);
+  const ic=(r,c,x,y,z,p,d,glow)=>put(new T.Mesh(geo("s"+[r,d],()=>new T.IcosahedronGeometry(r,d)),glow?bas(c):mat(c)),x,y,z,p);
+  const PAL=S.pal.map(toInt),ROOF=S.roof.map(toInt),CARC=S.car.map(toInt),RC=[-65,-39,-13,13,39,65],WL=[],WD=[];
+  const win=(x,y,z,ry)=>(rnd()<S.lit?WL:WD).push([x,y,z,ry]);
+  function bld(x,z,w,d,h,c){bx(w,h,d,c,x,h/2+.3,z);bx(w+.6,.5,d+.6,0x2b2b33,x,h+.55,z);bx(2,2.6,.2,0x2b2b33,x,1.6,z+d/2+.05);
+    const nx=Math.floor(w/3),nz=Math.floor(d/3);
+    for(let y=3.9;y<h-.5;y+=3.2){for(let i=0;i<nx;i++){const o=(i-(nx-1)/2)*3;win(x+o,y,z+d/2+.05,0);win(x+o,y,z-d/2-.05,0)}
+      for(let i=0;i<nz;i++){const o=(i-(nz-1)/2)*3;win(x+w/2+.05,y,z+o,Math.PI/2);win(x-w/2-.05,y,z+o,Math.PI/2)}}}
+  function house(x,z,ry,c,rc){const g=new T.Group();g.position.set(x,.3,z);g.rotation.y=ry;sc.add(g);
+    bx(7,4.2,6,c,0,2.1,0,g);const r=new T.Mesh(geo("roof",()=>new T.ConeGeometry(5.6,3,4)),mat(rc));r.rotation.y=Math.PI/4;r.scale.set(1,1,.9);put(r,0,5.7,0,g);
+    bx(.9,2,.9,0xe8e0d0,2,6.3,-1,g);bx(1.5,2.6,.2,0x7a3b1d,-1.8,1.3,3.05,g);bx(1.7,1.7,.2,N?0xffd27a:0xffe9a8,1.5,2.4,3.05,g)}
+  function tree(x,z){const s=.8+rnd()*.6,g=new T.Group();g.position.set(x,.3,z);g.scale.setScalar(s);sc.add(g);cy(.25,.3,1.6,5,0x7a4a2a,0,.8,0,g);
+    put(new T.Mesh(geo("lf",()=>new T.IcosahedronGeometry(1.5,0)),mat(pick([0x3fae5a,0x5cc46e,0x2f9d6f]))),0,2.9,0,g)}
+  function lamp(x,z){cy(.1,.12,5,5,0x2b2b33,x,2.8,z);ic(.35,0xffe08a,x,5.4,z,null,0,true)}
+  function bench(x,z,ry){const g=new T.Group();g.position.set(x,.3,z);g.rotation.y=ry;sc.add(g);
+    bx(4,.25,1,0x2b2b33,0,.9,0,g);bx(4,.9,.2,0x2b2b33,0,1.5,-.45,g);bx(4,.12,.22,0xf5c518,0,2,-.45,g);bx(.2,.8,.8,0x2b2b33,-1.8,.45,0,g);bx(.2,.8,.8,0x2b2b33,1.8,.45,0,g)}
+  bx(600,.1,600,toInt(S.ground),0,-.15,0);bx(160,.2,160,toInt(S.road),0,0,0);
+  RC.forEach(r=>{for(let k=-78;k<=78;k+=6){if(RC.some(q=>Math.abs(k-q)<4.5))continue;bx(.25,.02,2.4,0xf5c518,r,.11,k);bx(2.4,.02,.25,0xf5c518,k,.11,r)}});
+  const wsel=()=>{const r=rnd()*(S.tw+S.hs+S.mx+1e-6);return r<S.tw?"t":r<S.tw+S.hs?"h":"m"};
+  for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++){const cx=i*26,cz=j*26;
+    bx(20,.3,20,(i+j)%2?0xe6dfce:0xdcd5c4,cx,.15,cz);[[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>lamp(cx+a*9.7,cz+b*9.7));
+    if(!i&&!j){cy(4.5,4.8,.3,12,0xf5c518,0,.45,0);bench(-8,0,Math.PI/2);bench(8,0,-Math.PI/2);[[-7,-7],[7,-7],[-7,7],[7,7]].forEach(([a,b])=>tree(a,b));continue}
+    const t=wsel(),tw=()=>pick([6,7,8]),tower=(a,b)=>bld(cx+a*5.2,cz+b*5.2,tw(),tw(),S.hmin+rnd()*(S.hmax-S.hmin),pick(PAL)),
+      hs=(zz,ry)=>{house(cx-4,cz+zz,ry,pick(PAL),pick(ROOF));house(cx+4,cz+zz,ry,pick(PAL),pick(ROOF))};
+    if(t=="t"){tower(-1,-1);tower(1,-1);tower(-1,1);tower(1,1)}else if(t=="h"){hs(6,0);hs(-6,Math.PI);tree(cx-6,cz);tree(cx+6,cz)}else{tower(-1,-1);tower(1,-1);hs(6.5,0)}
+    if(rnd()<(S.trees-1)*.6)tree(cx+(rnd()<.5?-1:1)*8.8,cz+(rnd()-.5)*10)}
+  const d=new T.Object3D(),wg=new T.BoxGeometry(1.5,1.9,.2);
+  [[WL,N?0xffd27a:0xffe08a],[WD,N?0x232c45:0x3b4a6b]].forEach(([l,c])=>{if(!l.length)return;const m=new T.InstancedMesh(wg,new T.MeshBasicMaterial({color:c}),l.length);
+    l.forEach((a,i)=>{d.position.set(a[0],a[1],a[2]);d.rotation.y=a[3];d.updateMatrix();m.setMatrixAt(i,d.matrix)});sc.add(m)});
+  function car(c){const g=new T.Group();bx(2.1,.8,4.2,c,0,.75,0,g);bx(1.8,.7,2.2,0xcfeeff,0,1.45,-.1,g);bx(1.85,.15,2.3,c,0,1.85,-.1,g);
+    [[1,1.4],[-1,1.4],[1,-1.4],[-1,-1.4]].forEach(([s,z])=>{cy(.45,.45,.35,8,0x22222a,s*1.05,.45,z,g).rotation.z=Math.PI/2});
+    bx(.5,.3,.1,0xffe08a,.6,.8,2.12,g);bx(.5,.3,.1,0xffe08a,-.6,.8,2.12,g);return g}
+  const cars=[];for(let n=0;n<S.cars;n++){const ax=n%2?"x":"z",dir=n%4<2?1:-1,rc=pick(RC),g=car(pick(CARC));sc.add(g);cars.push({g,ax,dir,lane:rc+(ax=="z"?-1.5:1.5)*dir,p0:-78+rnd()*156,v:7+rnd()*5})}
+  const upd=t=>cars.forEach(c=>{const p=((c.p0+c.dir*c.v*t+80)%160+160)%160-80;
+    if(c.ax=="z"){c.g.position.set(c.lane,.1,p);c.g.rotation.y=c.dir>0?0:Math.PI}else{c.g.position.set(p,.1,c.lane);c.g.rotation.y=c.dir>0?Math.PI/2:-Math.PI/2}});
+  return{scene:sc,upd}}
+let DR=null,DCAM=null;const DIST={};
+function paintDistrict(x,W,H,S,t,off){const key=S.key||JSON.stringify(S);let d=DIST[key];if(!d)d=DIST[key]=buildDistrict(S);
+  if(!DR){DR=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});DR.setPixelRatio(1);DCAM=new THREE.PerspectiveCamera(48,1,.1,400)}
+  if(DR.__w!==W||DR.__h!==H){DR.setSize(W,H,false);DR.__w=W;DR.__h=H;DCAM.aspect=W/H;DCAM.updateProjectionMatrix()}
+  const az=S.az+(off||0)+t*.06,dist=100-Math.min(t,14)*1.2,el=.38+.04*Math.sin(t*.4);
+  DCAM.position.set(dist*Math.cos(el)*Math.sin(az),3+dist*Math.sin(el),dist*Math.cos(el)*Math.cos(az));DCAM.lookAt(0,7,0);
+  d.upd(t);DR.render(d.scene,DCAM);x.drawImage(DR.domElement,0,0,W,H)}
+
+/* ---------- Images et vidéos : lecture, miniatures, analyse locale ---------- */
+const loadImg=u=>new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>ko(new Error("image illisible"));i.src=u});
+async function imgFromBlob(b,max=1600){const u=URL.createObjectURL(b);try{const i=await loadImg(u),w=i.naturalWidth,h=i.naturalHeight,r=Math.min(1,max/Math.max(w,h)),c=document.createElement("canvas");c.width=Math.max(1,Math.round(w*r));c.height=Math.max(1,Math.round(h*r));c.getContext("2d").drawImage(i,0,0,c.width,c.height);return c}finally{URL.revokeObjectURL(u)}}
+const jpeg=(c,max,q)=>{const w=c.naturalWidth||c.width,h=c.naturalHeight||c.height,r=Math.min(1,max/Math.max(w,h)),k=document.createElement("canvas");k.width=Math.max(1,Math.round(w*r));k.height=Math.max(1,Math.round(h*r));k.getContext("2d").drawImage(c,0,0,k.width,k.height);return k.toDataURL("image/jpeg",q||.8)};
+async function videoFrames(blob,n,maxH){const u=URL.createObjectURL(blob),v=document.createElement("video");v.muted=true;v.playsInline=true;v.preload="auto";v.src=u;
+  try{await new Promise((ok,ko)=>{v.onloadeddata=ok;v.onerror=()=>ko(new Error("vidéo illisible (codec non pris en charge par ce navigateur)"));setTimeout(()=>ko(new Error("vidéo trop lente à charger")),25000)});
+    const d=isFinite(v.duration)&&v.duration>0?v.duration:1,k=Math.max(1,Math.min(n,Math.round(d*4))),r=Math.min(1,maxH/Math.max(1,v.videoHeight)),out=[];
+    for(let i=0;i<k;i++){await new Promise(res=>{v.onseeked=res;v.currentTime=Math.min(Math.max(0,d-.05),(i+.5)/k*d);setTimeout(res,4000)});
+      const c=document.createElement("canvas");c.width=Math.max(1,Math.round(v.videoWidth*r));c.height=Math.max(1,Math.round(v.videoHeight*r));c.getContext("2d").drawImage(v,0,0,c.width,c.height);out.push(c)}
+    return{frames:out,duration:d,w:v.videoWidth,h:v.videoHeight}}finally{URL.revokeObjectURL(u)}}
+function rgb2hsl(r,g,b){r/=255;g/=255;b/=255;const M=Math.max(r,g,b),m=Math.min(r,g,b),l=(M+m)/2;let h=0,s=0;if(M!==m){const d=M-m;s=l>.5?d/(2-M-m):d/(M+m);h=M===r?(g-b)/d+(g<b?6:0):M===g?(b-r)/d+2:(r-g)/d+4;h*=60}return[h,s,l]}
+function hsl2hex(h,s,l){const a=s*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12;return l-a*Math.max(-1,Math.min(k-3,9-k,1))};return"#"+[f(0),f(8),f(4)].map(v=>Math.round(clamp(v,0,1)*255).toString(16).padStart(2,"0")).join("")}
+/* Lit l'image comme un architecte : couleurs, lumière, lignes verticales (immeubles) ou horizontales (maisons), verdure. Aucun envoi réseau. */
+function analyze(srcs){const w=48,h=64,c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d",{willReadFrequently:true});
+  let lum=0,n=0,gx=0,gy=0,gr=0;const top=[0,0,0,0],bot=[0,0,0,0],bins=Array.from({length:12},()=>({w:0,r:0,g:0,b:0}));
+  srcs.forEach(src=>{const sw=src.naturalWidth||src.width,sh=src.naturalHeight||src.height,r=Math.max(w/sw,h/sh);x.clearRect(0,0,w,h);x.drawImage(src,(w-sw*r)/2,(h-sh*r)/2,sw*r,sh*r);
+    const d=x.getImageData(0,0,w,h).data,L=new Float32Array(w*h);
+    for(let i=0;i<w*h;i++){const R=d[i*4],G=d[i*4+1],B=d[i*4+2],l=(.299*R+.587*G+.114*B)/255,y=Math.floor(i/w);L[i]=l;lum+=l;n++;
+      if(y<h*.15){top[0]+=R;top[1]+=G;top[2]+=B;top[3]++}if(y>h*.8){bot[0]+=R;bot[1]+=G;bot[2]+=B;bot[3]++}
+      const[H_,S_,L_]=rgb2hsl(R,G,B);if(S_>.18&&L_>.15&&L_<.9){const b=bins[Math.floor(H_/30)%12],wt=S_*(1-Math.abs(L_-.5));b.w+=wt;b.r+=R*wt;b.g+=G*wt;b.b+=B*wt}
+      if(G>R*1.08&&G>B*1.05&&S_>.15)gr++}
+    for(let y=1;y<h;y++)for(let xx=1;xx<w;xx++){const i=y*w+xx;gx+=Math.abs(L[i]-L[i-1]);gy+=Math.abs(L[i]-L[i-w])}});
+  lum/=n;const avg=a=>a[3]?[a[0]/a[3],a[1]/a[3],a[2]/a[3]]:[128,128,128],tp=avg(top),bt=avg(bot),edge=(gx+gy)/n,vert=gx/Math.max(1e-6,gx+gy),vv=clamp((vert-.45)/.2,-1,1),dens=clamp(edge/.12,.2,1),green=gr/n;
+  const picks=bins.filter(b=>b.w>0).sort((a,b)=>b.w-a.w).slice(0,6).map(b=>{const[hh,ss,ll]=rgb2hsl(b.r/b.w,b.g/b.w,b.b/b.w);return[hh,ss,ll]});
+  const pal=picks.map(([hh,ss,ll])=>hsl2hex(hh,clamp(ss,.5,.85),clamp(ll,.5,.66))),roof=picks.slice(0,4).map(([hh,ss])=>hsl2hex(hh,clamp(ss,.3,.55),.28)),car=picks.map(([hh,ss])=>hsl2hex((hh+25)%360,clamp(ss,.6,.9),.58)).slice(0,5);
+  const[sh_,ss_,sl_]=rgb2hsl(...tp),[bh_,bs_,bl_]=rgb2hsl(...bt),time=lum<.3?"night":lum<.45?"dusk":"day";
+  const S={sky:hsl2hex(sh_,clamp(ss_,.2,.6),clamp(sl_,.1,.82)),ground:green>.12?(time=="night"?"#3d6b45":"#a8dca0"):hsl2hex(bh_,clamp(bs_*.6,.1,.4),clamp(bl_+.15,.35,.75)),road:hsl2hex(bh_,.1,clamp(bl_*.6,.15,.3)),
+    pal,roof,car,time,tw:1+vv*.8,hs:1-vv*.6,mx:1,hmax:clamp(26+14*vv+dens*10,18,44),trees:clamp(1+green*4,1,2.6),cars:Math.round(8+dens*16),seed:Math.floor((gx*1000+gy*777+lum*500)%99991)+1,az:(sh_/360)*6.28-3.14};
+  return norm(S)}
+const PROMPT=`Tu es l’architecte d’un décor 3D « low poly » (petits volumes colorés aux faces plates, style jeu mobile). Observe la ou les image(s) et propose un quartier qui reprend leur ambiance, leurs couleurs et leur type d’urbanisme.
+Réponds UNIQUEMENT par un objet JSON : {"sky":"#rrggbb","ground":"#rrggbb (herbe ou sol)","road":"#rrggbb","pal":[8 couleurs "#rrggbb" de façades],"roof":[4 couleurs "#rrggbb" de toits],"car":[5 couleurs "#rrggbb" de voitures],"time":"day|dusk|night","towers":0 à 2 (poids des immeubles hauts),"houses":0 à 2 (poids des maisons),"mixed":0 à 2,"hmax":18 à 44 (hauteur max des immeubles),"trees":0.5 à 2.6,"cars":6 à 24,"lit":0 à 1 (part de fenêtres allumées)}`;
+async function visionAsk(prompt,imgs){const A=LS.get("sf_assign",{}),a=A.orchestrator,c=a&&conns().find(x=>x.id==a.id&&x.enabled&&x.status=="ok");if(!c)throw new Error("aucune clé IA valide");
+  const m=a.model,ps=imgs.map(u=>({mime:u.slice(5,u.indexOf(";")),data:u.split(",")[1],url:u})),t=PRE[c.p].t;REQ++;$("#rq").textContent="Requêtes IA envoyées : "+REQ;
+  if(t=="gemini"){const j=await http(`${c.base}/models/${m}:generateContent`,{method:"POST",headers:{"x-goog-api-key":c.key,"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt},...ps.map(p=>({inline_data:{mime_type:p.mime,data:p.data}}))]}],generationConfig:{responseMimeType:"application/json"}})});return(j.candidates?.[0]?.content?.parts||[]).map(q=>q.text||"").join("")}
+  if(t=="anthropic"){const j=await http(c.base+"/messages",{method:"POST",headers:ah(c),body:JSON.stringify({model:m,max_tokens:2048,messages:[{role:"user",content:[...ps.map(p=>({type:"image",source:{type:"base64",media_type:p.mime,data:p.data}})),{type:"text",text:prompt}]}]})});return(j.content||[]).map(q=>q.text||"").join("")}
+  const j=await http(c.base+"/chat/completions",{method:"POST",headers:bh(c),body:JSON.stringify({model:m,messages:[{role:"user",content:[{type:"text",text:prompt},...ps.map(p=>({type:"image_url",image_url:{url:p.url}}))]}]})});return j.choices?.[0]?.message?.content||""}
+
+/* ---------- Création et stockage des fichiers ---------- */
+async function addMedia(blob,name,kind,pack,extra){const hash=await sha(await blob.arrayBuffer());if(await getA(hash))return"dup";
+  await putA({hash,name:name.replace(/\.[^.]+$/,""),path:name,ext:ext(name),pack,license:"fichier importé",kind,anims:[],animsKnown:false,size:blob.size,blob,...extra});return"add"}
+async function saveQuartier(S,extra){const json=JSON.stringify(S),blob=new Blob([json],{type:"application/json"}),hash=await sha(await blob.arrayBuffer());if(await getA(hash))return null;
+  let thumb="";try{const k={...S};delete k.key;const c=document.createElement("canvas");c.width=180;c.height=320;paintDistrict(c.getContext("2d"),180,320,k,3,0);thumb=c.toDataURL("image/jpeg",.7);delete DIST[JSON.stringify(k)]}catch(e){}
+  const a={hash,name:S.name,path:S.name+".quartier.json",ext:"quartier",pack:S.srcName?"généré depuis « "+S.srcName+" »":"créé dans le Studio",license:"généré",kind:"quartier",anims:[],animsKnown:false,size:blob.size,blob,spec:S,src:S.src||"",thumb,...extra};await putA(a);return a}
+function specFromHtml(t){const g=n=>{const m=t.match(new RegExp("const\\s+"+n+"\\s*=\\s*\\[([^\\]]+)\\]"));return m?[...m[1].matchAll(/0x([0-9a-f]{6})/gi)].map(q=>"#"+q[1].toLowerCase()):null},sk=t.match(/SKY\s*=\s*0x([0-9a-f]{6})/i),pal=g("PAL"),roof=g("ROOF"),car=g("CARC");
+  if(!pal&&!roof&&!car&&!sk)return null;return norm({...DEF,...(pal?{pal}:{}),...(roof?{roof}:{}),...(car?{car}:{}),...(sk?{sky:"#"+sk[1].toLowerCase()}:{})})}
+async function makeQuartier(a,note){const cvs=a.kind=="image"?[await imgFromBlob(a.blob)]:(await videoFrames(a.blob,3,480)).frames;
+  let S=analyze(cvs),ia=false,why="";S.name="Quartier · "+a.name;S.src=a.hash;S.srcName=a.name;
+  try{note&&note("Lecture IA…");const o=J(await visionAsk(PROMPT,cvs.map(c=>jpeg(c,640))));const keep={name:S.name,src:S.src,srcName:S.srcName,seed:S.seed,az:S.az};S=norm({...S,...o,...keep});ia=true}catch(er){why=er.message}
+  const r=await saveQuartier(S);return{ia,why,asset:r}}
+async function archAll(){return track("arch","🏞️ Contrôle des décors réels","Analyse des photos et vidéos…",async()=>{const all=await allA(),done=new Set(all.filter(a=>a.kind=="quartier").map(a=>a.src).filter(Boolean)),
+  src=all.filter(a=>(a.kind=="image"||a.kind=="vidéo")&&!a.bad&&!done.has(a.hash)).slice(0,6);
+  if(!src.length)return all.some(a=>a.kind=="quartier")?"Quartiers déjà prêts ✔":"Aucune photo ni vidéo à transformer : étape ignorée ✔";
+  let made=0,ia=0,loc=0,err=[],why="";
+  for(let i=0;i<src.length;i++){agSet("arch",i/src.length*95,"Quartier "+(i+1)+"/"+src.length+" : "+src[i].name);
+    try{const r=await makeQuartier(src[i],m=>agSet("arch",i/src.length*95,m));if(r.asset)made++;if(r.ia)ia++;else{loc++;why=r.why}}catch(e){err.push(src[i].name+" : "+e.message)}}
+  await injectBg();if(!made&&err.length)throw new Error(err[0]);
+  return made+" quartier(s) low poly créé(s)"+(ia?" · "+ia+" avec lecture IA":"")+(loc?" · "+loc+" par analyse locale (couleurs, lumière, lignes)"+(why?" — IA vision indisponible : "+why:""):"")+(err.length?" · ⚠ "+err[0]:"")})}
+window.archAll=archAll;
+
+/* ---------- Import universel ---------- */
+const fi=$("#fi"),old3d=fi.onchange;fi.removeAttribute("accept");
+fi.onchange=async e=>{const el=e.target,files=[...el.files],st=$("#imp"),has3=files.some(f=>/\.gltf$/i.test(f.name)),three=[],rest=[];
+  files.forEach(f=>{const x=ext(f.name);if(T3.test(x)||(has3&&IM.test(x)))three.push(f);else rest.push(f)});el.value="";
+  let base="",c={add:0,dup:0,txt:0},warn=[];
+  const zips=three.filter(f=>ext(f.name)=="zip");
+  try{if(three.length){await old3d({target:{files:three,value:""}});base=st.textContent}
+    for(const z of zips){try{const Z=await JSZip.loadAsync(z),keys=Object.keys(Z.files).filter(k=>!Z.files[k].dir);if(keys.some(k=>/\.(glb|gltf|fbx|obj)$/i.test(k)))continue;
+      for(const k of keys){const x=ext(k);if(!(IM.test(x)||VD.test(x)||/^(html?|txt|md|json)$/.test(x)))continue;const b=await Z.files[k].async("blob");rest.push(new File([b],k.split("/").pop()))}}catch(er){warn.push(z.name+" : "+er.message)}}
+    for(let i=0;i<rest.length;i++){const f=rest[i],x=ext(f.name),mt=f.type||"";st.textContent="Import… "+(i+1)+"/"+rest.length+" · "+f.name;
+      try{let r;
+        if(x==="psd"){r=await addMedia(f,f.name,"rigsource","illustration en couches · source AutoRig",{rigSource:true})}
+        else if(IM.test(x)||mt.startsWith("image/")){const cv=await imgFromBlob(f);r=await addMedia(f,f.name,"image","fichier importé",{w:cv.width,h:cv.height,thumb:jpeg(cv,200,.7)})}
+        else if(VD.test(x)||mt.startsWith("video/")){if(f.size>3e8)throw new Error("trop lourde (plus de 300 Mo)");let meta={};try{const v=await videoFrames(f,1,240);meta={thumb:jpeg(v.frames[0],200,.7),dur:v.duration,w:v.w,h:v.h}}catch(er){meta={bad:er.message};warn.push(f.name+" : "+er.message)}r=await addMedia(f,f.name,"vidéo","fichier importé",meta)}
+        else if(AU.test(x)||mt.startsWith("audio/"))r=await addMedia(f,f.name,"audio","fichier importé",{});
+        else if(/^html?$/.test(x)){const t=await f.text(),S=specFromHtml(t);if(S){S.name="Quartier · "+f.name.replace(/\.[^.]+$/,"");const a=await saveQuartier(S,{html:f,pack:"page HTML importée (couleurs lues dans le fichier)"});r=a?"add":"dup"}else r=await addMedia(f,f.name,"autre","page web",{html:f})}
+        else if(/^(txt|md)$/.test(x)||mt=="text/plain"){const t=(await f.text()).trim();if(t&&(!PR.story.trim()||confirm("Remplacer l’histoire actuelle par le texte de « "+f.name+" » ?"))){$("#story").value=t;$("#story").oninput();if(!$("#ep").value){$("#ep").value=f.name.replace(/\.[^.]+$/,"");$("#ep").oninput()}c.txt++;r="txt"}else r="dup"}
+        else if(x=="json"){const o=JSON.parse(await f.text());
+          if(o&&Array.isArray(o.pal)&&Array.isArray(o.roof)){const S=norm(o),a=await saveQuartier(S);r=a?"add":"dup"}
+          else if(o&&Array.isArray(o.scenes)&&confirm("Charger « "+f.name+" » comme plan de projet (remplace les scènes actuelles) ?")){PR.scenes=o.scenes;PR.chars=Array.isArray(o.characters)?o.characters:PR.chars;PR.ep=o.episode||PR.ep;PR.story=PR.story||o.scenes.map(s=>s.action||"").join(" ");$("#story").value=PR.story;$("#ep").value=PR.ep;savePR();drawScenes();c.txt++;r="txt"}
+          else r=await addMedia(f,f.name,"autre","fichier importé",{})}
+        else r=await addMedia(f,f.name,"autre","fichier importé",{});
+        if(r=="add")c.add++;else if(r=="dup")c.dup++}catch(er){warn.push(f.name+" : "+er.message)}}
+    st.textContent=(base?base+" · ":"")+(rest.length?c.add+" fichier(s) ajouté(s), "+c.dup+" doublon(s) ou refusé(s)"+(c.txt?", "+c.txt+" texte/plan chargé(s)":"")+".":"")+(warn.length?" ⚠ "+warn.slice(0,3).join(" · "):"")}
+  catch(er){st.textContent="Erreur : "+er.message}
+  await drawCat();injectBg()};
+
+/* ---------- Catalogue ---------- */
+window.drawCat=async function(){const q=($("#q").value||"").toLowerCase(),k=$("#kf").value,a=(await allA()).filter(x=>(!k||x.kind==k)&&(!q||x.name.toLowerCase().includes(q)));
+  const info=x=>x.kind=="quartier"?`<span style="display:inline-flex;gap:3px;vertical-align:middle">${(x.spec&&x.spec.pal||[]).map(c=>`<i style="width:12px;height:12px;border-radius:3px;background:${esc(c)};display:inline-block"></i>`).join("")}</span> · ${esc(x.spec?x.spec.time:"")}`:
+    x.kind=="rigsource"?"PSD en couches · source pour AutoRig":x.kind=="image"?x.w+"×"+x.h+" px · sert de décor":x.kind=="vidéo"?(x.bad?"⚠ "+esc(x.bad):(x.dur?x.dur.toFixed(1)+" s · ":"")+x.w+"×"+x.h+" · sert de décor"):x.kind=="audio"?"audio conservé (pas encore mixé dans la vidéo)":x.kind=="autre"?"conservé tel quel (non utilisable directement)":x.animsKnown?x.anims.length+" animation(s)":"animations non lisibles (hors GLB)";
+  $("#cat").innerHTML=a.slice(0,150).map(x=>`<div class="it" style="display:flex;gap:10px">${x.thumb?`<img src="${x.thumb}" alt="" style="width:56px;height:100px;object-fit:cover;border-radius:8px;flex:none">`:""}<div style="flex:1;min-width:0"><b>${esc(x.name)}</b> · ${x.kind} · .${esc(x.ext)}<br><span class="note">${esc(x.pack)} · ${esc(x.license)} · ${info(x)}</span>
+    <div class="row" style="margin-top:6px">${x.kind=="image"||x.kind=="vidéo"?`<button class="g" data-q="${x.hash}">🖼️ Ressource de décor</button>`:""}${x.html?`<button class="g" data-o="${x.hash}">Ouvrir la page d’origine</button>`:""}<button class="g" data-d="${x.hash}">Retirer</button></div></div></div>`).join("")||'<p class="note">Catalogue vide : importe un fichier.</p>'};
+$("#q").oninput=$("#kf").onchange=()=>drawCat();
+$("#cat").addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.q){alert("La génération procédurale de quartiers est désactivée en mode strict. Importe et sélectionne une vraie image ou vidéo de décor.");return}
+  if(b.dataset.o){const a=await getA(b.dataset.o);if(a&&a.html)window.open(URL.createObjectURL(a.html),"_blank")}
+  if(b.dataset.d)setTimeout(injectBg,300)});
+/* Génération procédurale de quartiers désactivée : aucun décor fictif en mode strict. */
+
+/* ---------- Décors des scènes ---------- */
+const DEC={};window.DEC=DEC;
+async function decorOf(h){if(h in DEC&&DEC[h])return DEC[h];const a=await getA(h);if(!a)return null;
+  if(a.kind=="image")DEC[h]={t:"img",img:await imgFromBlob(a.blob,1600)};
+  else if(a.kind=="vidéo"){const r=await videoFrames(a.blob,40,640);DEC[h]={t:"vid",fr:r.frames,fps:Math.max(1,r.frames.length/r.duration)}}
+  else throw new Error("Seuls les décors photo ou vidéo importés sont autorisés en production.");
+  return DEC[h]||null}
+const words=t=>String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(/[^a-z0-9]+/).filter(w=>w.length>3);
+async function pickBgs(){
+  const all=await allA(),have=new Set(all.map(a=>a.hash));
+  PR.scenes.forEach(s=>{if(s.bg&&!have.has(s.bg)){delete s.bg;delete s.bgAuto;}});
+  savePR();
+}
+async function decorsAll(){await pickBgs();const bad=[];for(const h of new Set(PR.scenes.map(s=>s.bg).filter(Boolean))){try{await decorOf(h)}catch(e){DEC[h]=null;bad.push(e.message)}}const n=PR.scenes.filter(s=>s.bg&&DEC[s.bg]).length;return{n,bad}}
+const cover=(x,src,W,H,z,pan)=>{const sw=src.naturalWidth||src.width,sh=src.naturalHeight||src.height,r=Math.max(W/sw,H/sh)*(1+z),w=sw*r,h=sh*r;x.drawImage(src,(W-w)/2+(pan||0)*(w-W)*.5,(H-h)/2,w,h)};
+window.drawBg=function(x,W,H,s,t,o){const d=s.bg&&DEC[s.bg];if(!d)return false;
+  try{if(d.t=="img")cover(x,d.img,W,H,Math.min(.12,.02+t*.01),Math.sin(t*.25)*.5);
+    else if(d.t=="vid"){const n=d.fr.length,P=2*(n-1)||1,T=(o.t0+t)*d.fps,u=((T%P)+P)%P,k=u<=n-1?u:P-u,a=Math.floor(k),b=Math.min(n-1,a+1),f=k-a;cover(x,d.fr[a],W,H,0,0);if(f>.02&&b!==a){x.globalAlpha=f;cover(x,d.fr[b],W,H,0,0);x.globalAlpha=1}}
+    else return false}catch(e){x.globalAlpha=1;throw e}return true};
+async function injectBg(){const all=await allA(),opts=all.filter(a=>["image","vidéo"].includes(a.kind)&&!a.bad);
+  [...$("#scenes").children].forEach((c,i)=>{const s=PR.scenes[i];if(!s)return;let sel=c.querySelector("[data-bg]");
+    if(!sel){c.insertAdjacentHTML("beforeend",'<label class="note" style="display:block;margin-top:8px">🖼️ Décor de la scène<select data-bg="'+i+'"></select></label>');sel=c.querySelector("[data-bg]")}
+    sel.innerHTML='<option value="">— Choisir un vrai média importé —</option>'+opts.map(a=>`<option value="${a.hash}" ${s.bg==a.hash?"selected":""}>${{image:"🖼️",vidéo:"🎞️"}[a.kind]} ${esc(a.name)}</option>`).join("")})}
+$("#scenes").addEventListener("change",e=>{const i=e.target.dataset.bg;if(i==null)return;const s=PR.scenes[i];if(!s)return;if(e.target.value){s.bg=e.target.value;s.bgAuto=false}else{delete s.bg;s.bgAuto=false}savePR();decorsAll().catch(()=>{})});
+const dS=window.drawScenes;window.drawScenes=function(){dS();injectBg()};
+const gA=window.graphAll;window.graphAll=async function(){await gA();const r=await decorsAll();if(r.bad.length)throw new Error(r.bad.join(" ; "));if(r.n!==PR.scenes.length)throw new Error("Chaque scène doit avoir un décor photo/vidéo réel.");injectBg()};
+const aG=window.agent;window.agent=async function(i){return aG(i)};
+const eV=window.exportVideo;window.exportVideo=async function(){await window.__STRICT_PRODUCTION_CHECK();if(window.RIGBY2D&&window.RIGBY2D.reset)window.RIGBY2D.reset();const r=await decorsAll();if(r.bad.length)throw new Error(r.bad.join(" ; "));if(r.n!==PR.scenes.length)throw new Error("Export bloqué : chaque scène doit posséder un décor photo/vidéo importé et vérifié.");return eV()};
+
+/* ---------- Ligne de l'agent dans la liste ---------- */
+if(!AG.some(a=>a[0]=="arch")){const i=AG.findIndex(a=>a[0]=="lib");AG.splice(i+1,0,["arch","🏞️ Directeur des décors 2D","préparation des décors et accessoires"])}
+const ar=agRow("arch","🏞️ Contrôle des décors réels");agSet("arch",0,"images et vidéos importées uniquement · en attente","");
+if(AGS.lib&&AGS.lib.d)AGS.lib.d.after(ar.d);
+const ab=ar.d.querySelector(".agb");ab.style.display="";ab.onclick=async()=>{ab.disabled=true;try{await window.archAll2D()}catch(er){agSet('arch',0,'Échec : '+er.message,'bad')}finally{ab.disabled=false}};STEP.arch=()=>window.archAll2D();
+drawScenes();drawCat();
+})()}catch(e){console.error(e);document.body.insertAdjacentHTML("afterbegin",'<p class="err" style="padding:12px">Extension v11 non chargée : '+String(e.message).replace(/[<>&]/g,"")+'</p>')}
+</script>
+<script>/* Animation Director (couche logique 2D, pas encore branchée au rendu) */
+/* Animation Director — couche logique pure (aucune dépendance, aucun rendu).
+   L'IA propose un plan ; ce module le VALIDE, le CORRIGE (avec avertissements)
+   puis le COMPILE en clips par piste que le moteur 2D (Rigby2D/PixiJS) devra exécuter.
+   Fonctionne dans le navigateur (window.AnimDirector) et sous Node (module.exports). */
+(function (root) {
+  "use strict";
+
+  const EMOTIONS = ["neutral", "happy", "sad", "surprised", "angry", "confused", "worried", "laughing"];
+  const REACH = 0.8; // distance max (unités scène) pour attraper un objet
+
+  // Pistes : une piste ne joue qu'un clip à la fois par personnage.
+  // loco = jambes/déplacement · body = torse/posture · arms · head · face · mouth
+  // anim = nom d'animation attendu dans le rig ; fb = solution de remplacement.
+  // needs : paramètres obligatoires. prio : priorité de piste (plus grand = gagne).
+  const A = (cat, tracks, joints, min, def, max, o) => Object.assign({ cat, tracks, joints, min, def, max, prio: 1, needs: [], fb: "idle" }, o);
+  const ACTIONS = {
+    // Déplacements
+    idle: A("move", ["body"], ["spine", "head"], 0.2, 1, 120, { fb: null, prio: 0 }),
+    walk: A("move", ["loco"], ["hips", "thigh", "shin", "foot", "upperarm"], 0.3, 2, 120, { needs: ["target"], prio: 2 }),
+    run: A("move", ["loco"], ["hips", "thigh", "shin", "foot", "upperarm"], 0.3, 1.5, 120, { needs: ["target"], prio: 2, fb: "walk" }),
+    turn: A("move", ["body", "head"], ["hips", "spine", "head"], 0.2, 0.5, 3, { needs: ["direction"], prio: 2 }),
+    stop: A("move", ["loco"], ["hips", "thigh", "foot"], 0.1, 0.3, 2, { prio: 2 }),
+    start_walking: A("move", ["loco"], ["hips", "thigh", "foot"], 0.1, 0.3, 2, { prio: 2, fb: "walk" }),
+    sit: A("move", ["loco", "body"], ["hips", "thigh", "shin", "spine"], 0.5, 1, 4, { needs: ["target"], prio: 3 }),
+    stand_up: A("move", ["loco", "body"], ["hips", "thigh", "shin", "spine"], 0.5, 1, 4, { prio: 3 }),
+    look_at: A("look", ["head"], ["neck", "head", "eyes"], 0.1, 0.4, 120, { needs: ["target"], prio: 1 }),
+    // Expressions (visage)
+    express: A("expr", ["face"], ["eyebrows", "eyelids", "mouth"], 0.1, 0.6, 120, { needs: ["emotion"], prio: 1, fb: "neutral" }),
+    // Gestes (bras)
+    wave: A("gest", ["arms"], ["upperarm", "forearm", "hand"], 0.5, 1.2, 6, { prio: 1 }),
+    point: A("gest", ["arms"], ["upperarm", "forearm", "hand"], 0.4, 1, 6, { prio: 1 }),
+    explain: A("gest", ["arms"], ["upperarm", "forearm", "hand"], 0.5, 2, 20, { prio: 1 }),
+    shrug: A("gest", ["arms", "body"], ["shoulder", "upperarm", "forearm"], 0.4, 0.8, 4, { prio: 1 }),
+    nod: A("gest", ["head"], ["neck", "head"], 0.3, 0.6, 3, { prio: 1 }),
+    shake_head: A("gest", ["head"], ["neck", "head"], 0.3, 0.8, 3, { prio: 1 }),
+    hands_on_hips: A("gest", ["arms"], ["upperarm", "forearm", "hand"], 0.3, 1, 60, { prio: 1 }),
+    // Interactions (objets)
+    pick_up: A("inter", ["body", "arms"], ["spine", "upperarm", "forearm", "hand"], 0.6, 1.4, 5, { needs: ["object"], prio: 3, grab: 0.55 }),
+    put_down: A("inter", ["body", "arms"], ["spine", "upperarm", "forearm", "hand"], 0.6, 1.2, 5, { needs: ["object"], prio: 3, grab: 0.5 }),
+    touch_object: A("inter", ["arms"], ["upperarm", "forearm", "hand"], 0.4, 0.8, 5, { needs: ["object"], prio: 3 }),
+    open_door: A("inter", ["arms"], ["upperarm", "forearm", "hand"], 0.6, 1, 4, { needs: ["object"], prio: 3 }),
+    close_door: A("inter", ["arms"], ["upperarm", "forearm", "hand"], 0.6, 1, 4, { needs: ["object"], prio: 3 }),
+    use_phone: A("inter", ["arms", "head"], ["upperarm", "forearm", "hand", "head"], 0.8, 3, 120, { needs: ["object"], prio: 3 }),
+    sit_on_chair: A("inter", ["loco", "body"], ["hips", "thigh", "shin", "spine"], 0.6, 1, 4, { needs: ["object"], prio: 3, fb: "sit" }),
+    hand_object_to_character: A("inter", ["arms"], ["upperarm", "forearm", "hand"], 0.6, 1.2, 5, { needs: ["object", "target"], prio: 3 }),
+    // Conversation
+    talk: A("conv", ["mouth", "face", "head"], ["mouth", "eyebrows", "eyelids", "head"], 0.5, 0, 120, { needs: ["dialogue"], prio: 2, fb: "speaking" }),
+    listening: A("conv", ["head", "face"], ["head", "eyes", "eyebrows"], 0.3, 1, 120, { prio: 1, fb: "idle" }),
+    thinking: A("conv", ["head", "face"], ["head", "eyes", "eyebrows"], 0.3, 1.2, 20, { prio: 1 }),
+    reacting: A("conv", ["face", "head"], ["eyebrows", "eyelids", "head"], 0.2, 0.7, 5, { prio: 1, fb: "listening" }),
+    interrupting: A("conv", ["mouth", "face", "head"], ["mouth", "eyebrows", "head"], 0.3, 0.6, 5, { prio: 3, fb: "talk" }),
+  };
+  // « talk » s'appuie sur l'animation « speaking » ; « express » sur l'émotion.
+  const ANIM_OF = { talk: "speaking", express: (a) => a.emotion || "neutral" };
+  const SYN = { speaking: "talk" };
+
+  const wcount = (t) => Math.max(1, String(t).trim().split(/\s+/).length);
+  const talkLen = (t) => Math.max(1.5, wcount(t) * 0.4 + 0.3); // même formule que timeline() d'almo.html
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const r3 = (v) => Math.round(v * 1000) / 1000;
+
+  /* ---------- Validation d'une action ---------- */
+  function animFor(a) {
+    const m = ANIM_OF[a.type];
+    return typeof m === "function" ? m(a) : m || a.type;
+  }
+  // Choisit l'animation réellement disponible dans le rig, sinon remplace.
+  function resolveAnim(a, ch, warn) {
+    let t = a.type, seen = new Set(), anim = animFor(a);
+    for (;;) {
+      if (!ch.anims || ch.anims.includes(anim)) return { type: t, anim, replaced: t !== a.type };
+      const next = ACTIONS[t] && ACTIONS[t].fb;
+      if (!next || seen.has(next)) { warn(`aucune animation « ${anim} » ni remplacement pour ${ch.id}`); return { type: "idle", anim: "idle", replaced: true, missing: true }; }
+      seen.add(next);
+      warn(`« ${anim} » absente du rig de ${ch.id} → remplacée par « ${next} »`);
+      t = SYN[next] || next; anim = animFor({ type: t, emotion: a.emotion });
+    }
+  }
+
+  function validateAction(a, ctx, ch, W) {
+    const E = [], D = ctx.dialogueLen || (() => 0);
+    const def = ACTIONS[a && a.type];
+    if (!def) return { errors: [`action inconnue : « ${a && a.type} »`] };
+    const out = Object.assign({}, a);
+    const knownT = (id) => ctx.chars.has(id) || ctx.objects.has(id) || ctx.anchors.has(id);
+    for (const n of def.needs) {
+      if (n === "target" && !(out.target && knownT(out.target))) E.push(`${a.type} : cible inconnue « ${out.target} »`);
+      if (n === "object" && !(out.object && ctx.objects.has(out.object))) E.push(`${a.type} : objet inconnu « ${out.object} »`);
+      if (n === "dialogue" && !String(out.dialogue || "").trim()) E.push("talk : dialogue vide");
+      if (n === "direction" && !["left", "right"].includes(out.direction)) E.push("turn : direction doit être left ou right");
+      if (n === "emotion" && out.emotion == null) out.emotion = "neutral";
+    }
+    if (E.length) return { errors: E };
+    if (out.emotion != null && !EMOTIONS.includes(out.emotion)) { W(`émotion « ${out.emotion} » inconnue → neutral`); out.emotion = "neutral"; }
+    if (out.type === "talk" && out.emotion && ch.expressions && !ch.expressions.includes(out.emotion)) { W(`${ch.id} n'a pas l'expression « ${out.emotion} » → neutral`); out.emotion = "neutral"; }
+    let d = out.duration != null ? Number(out.duration) : def.def || (out.type === "talk" ? talkLen(out.dialogue) : 1);
+    if (!isFinite(d)) d = def.def || 1;
+    const c = clamp(d, def.min, def.max);
+    if (c !== d) W(`durée de ${out.type} ajustée ${d} → ${c}`);
+    out.duration = c;
+    return { action: out };
+  }
+
+  /* ---------- Compilation ---------- */
+  // plan = { scene, characters:[{id,x,anims,expressions,voice?}], objects:[{id,x,visible,size,anchors}], anchors?:[ids],
+  //          scripts:[{character, actions:[{type,..., parallel?, at?, after?:{character,index}}]}] }
+  function compile(plan) {
+    const warnings = [], errors = [];
+    const W = (m) => warnings.push(m);
+    const chars = new Map(plan.characters.map((c) => [c.id, Object.assign({ x: 0 }, c)]));
+    const objects = new Map((plan.objects || []).map((o) => [o.id, Object.assign({ x: 0, visible: true, state: "ground", holder: null }, o)]));
+    const anchors = new Set(plan.anchors || []);
+    const ctx = { chars, objects, anchors };
+    const clips = [], events = [], pos = new Map([...chars].map(([k, c]) => [k, c.x]));
+    const cursor = new Map([...chars.keys()].map((k) => [k, 0]));
+    const lastStart = new Map(), done = new Map(), prevType = new Map();
+    const xOf = (id) => (chars.has(id) ? pos.get(id) : objects.has(id) ? objects.get(id).x : (anchors.has(id) && plan.anchorPos ? plan.anchorPos[id] : 0));
+
+    const queues = plan.scripts.map((s) => ({ id: s.character, i: 0, list: s.actions || [] }));
+    for (const q of queues) if (!chars.has(q.id)) errors.push(`personnage inconnu : « ${q.id} »`);
+    if (errors.length) return { ok: false, errors, warnings };
+
+    const push = (ch, type, o, t0, dur, auto) => {
+      const def = ACTIONS[type];
+      const res = resolveAnim(Object.assign({ type }, o), chars.get(ch), W);
+      clips.push({ char: ch, action: type, anim: res.anim, tracks: def.tracks.slice(), joints: def.joints.slice(), t0: r3(t0), t1: r3(t0 + dur), prio: def.prio, params: o || {}, auto: !!auto, replaced: res.replaced });
+      return clips[clips.length - 1];
+    };
+
+    let progress = true;
+    while (progress) {
+      progress = false;
+      for (const q of queues) {
+        while (q.i < q.list.length) {
+          const raw = q.list[q.i];
+          if (raw.after && done.get(raw.after.character + ":" + raw.after.index) == null) break; // dépendance pas encore résolue
+          const ch = chars.get(q.id), v = validateAction(raw, ctx, ch, (m) => W(`${q.id}#${q.i} ${m}`));
+          if (v.errors) { v.errors.forEach((e) => errors.push(`${q.id}#${q.i} ${e}`)); q.i++; progress = true; continue; }
+          const a = v.action;
+          let t0 = cursor.get(q.id);
+          if (a.parallel && lastStart.has(q.id)) t0 = lastStart.get(q.id);
+          if (a.after) t0 = Math.max(t0, done.get(a.after.character + ":" + a.after.index));
+          if (a.at != null) t0 = Math.max(0, Number(a.at));
+          const prev = prevType.get(q.id);
+          // Transition douce : après une marche, on ralentit/stabilise avant tout autre mouvement du corps
+          if (prev === "walk" || prev === "run") {
+            if (!["walk", "run", "stop", "look_at", "talk", "express", "nod", "shake_head", "listening", "thinking", "reacting"].includes(a.type) && !a.parallel) {
+              const s = ACTIONS.stop; push(q.id, "stop", {}, t0, s.def, true); t0 += s.def; W(`${q.id}#${q.i} « stop » inséré avant ${a.type} (pas d'arrêt brutal de la marche)`);
+            }
+          }
+          // Atteindre un objet : sinon on marche d'abord jusqu'à lui
+          if (["pick_up", "put_down", "touch_object", "open_door", "close_door", "use_phone", "hand_object_to_character"].includes(a.type) && a.type !== "put_down") {
+            const o = objects.get(a.object);
+            if (Math.abs(pos.get(q.id) - o.x) > REACH) {
+              const dist = Math.abs(o.x - pos.get(q.id)), wd = clamp(dist / 1.4, 0.3, 120);
+              push(q.id, "walk", { target: a.object, from: pos.get(q.id), to: o.x }, t0, wd, true); pos.set(q.id, o.x - Math.sign(o.x - pos.get(q.id)) * REACH * 0.5);
+              t0 += wd; push(q.id, "stop", {}, t0, 0.3, true); t0 += 0.3;
+              W(`${q.id}#${q.i} ${a.type} : trop loin de « ${a.object} », marche insérée`);
+            }
+          }
+          if (a.type === "pick_up" && objects.get(a.object).holder) { errors.push(`${q.id}#${q.i} pick_up : « ${a.object} » est déjà tenu par ${objects.get(a.object).holder}`); q.i++; progress = true; continue; }
+          if (a.type === "put_down" && objects.get(a.object).holder !== q.id) { errors.push(`${q.id}#${q.i} put_down : ${q.id} ne tient pas « ${a.object} »`); q.i++; progress = true; continue; }
+          if (a.type === "walk" || a.type === "run") {
+            const from = pos.get(q.id), to = xOf(a.target);
+            a.from = from; a.to = to; a.facing = to >= from ? "right" : "left"; pos.set(q.id, to);
+            if (a.target && objects.has(a.target)) pos.set(q.id, to - Math.sign(to - from) * REACH * 0.5);
+          }
+          const clip = push(q.id, a.type, a, t0, a.duration, false);
+          // Objets : l'objet suit la main de la prise jusqu'au dépôt, il ne disparaît jamais
+          if (a.type === "pick_up") { const o = objects.get(a.object), tg = t0 + a.duration * ACTIONS.pick_up.grab; o.holder = q.id; events.push({ t: r3(tg), object: o.id, state: "held", holder: q.id, joint: "hand" }); }
+          if (a.type === "put_down") { const o = objects.get(a.object), tr = t0 + a.duration * ACTIONS.put_down.grab; o.holder = null; o.x = pos.get(q.id); events.push({ t: r3(tr), object: o.id, state: "ground", x: o.x }); }
+          // Conversation : les autres personnages reçoivent un comportement d'écoute différent de celui de l'orateur
+          if (a.type === "talk") {
+            for (const [oid] of chars) if (oid !== q.id) {
+              push(oid, "look_at", { target: q.id }, t0, Math.min(0.4, a.duration), true);
+              push(oid, "listening", { listensTo: q.id }, t0, a.duration, true);
+            }
+            push(q.id, "look_at", { target: a.target || [...chars.keys()].find((k) => k !== q.id) || q.id }, t0, Math.min(0.4, a.duration), true);
+          }
+          done.set(q.id + ":" + q.i, t0 + a.duration);
+          lastStart.set(q.id, t0); prevType.set(q.id, a.type);
+          cursor.set(q.id, Math.max(cursor.get(q.id), t0 + a.duration));
+          q.i++; progress = true;
+        }
+      }
+    }
+    for (const q of queues) if (q.i < q.list.length) errors.push(`${q.id}#${q.i} dépendance « after » jamais résolue`);
+
+    // Priorités sur une même piste : le clip prioritaire garde sa place ; sinon l'ancien est raccourci (fondu).
+    const resolved = resolveTracks(clips, W);
+    const total = Math.max(0, ...resolved.map((c) => c.t1));
+    const objTimeline = (id) => events.filter((e) => e.object === id).sort((x, y) => x.t - y.t);
+    return { ok: errors.length === 0, errors, warnings, clips: resolved.sort((a, b) => a.t0 - b.t0 || a.char.localeCompare(b.char)), events: events.sort((a, b) => a.t - b.t), duration: r3(total), objectAt: (id, t) => objectAt(objects, objTimeline(id), id, t, plan), finalPositions: Object.fromEntries(pos) };
+  }
+
+  function resolveTracks(clips, W) {
+    const BLEND = 0.15, byKey = new Map();
+    for (const c of clips) for (const tr of c.tracks) { const k = c.char + "|" + tr; (byKey.get(k) || byKey.set(k, []).get(k)).push(c); }
+    for (const [k, list] of byKey) {
+      list.sort((a, b) => a.t0 - b.t0);
+      for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+        const a = list[i], b = list[j];
+        if (b.t0 >= a.t1) break;
+        if (b.prio >= a.prio) { if (a.t1 > b.t0) { a.t1 = r3(b.t0 + BLEND); a.fadeOut = BLEND; } }
+        else { b.t0 = r3(Math.max(b.t0, a.t1 - BLEND)); b.fadeIn = BLEND; if (b.t1 < b.t0) b.t1 = b.t0; }
+      }
+    }
+    // Entrée/sortie progressives pour tout clip qui touche un autre sur la même piste
+    for (const c of clips) { c.blendIn = c.fadeIn || BLEND; c.blendOut = c.fadeOut || BLEND; }
+    return clips.filter((c) => c.t1 > c.t0);
+  }
+
+  function objectAt(objects, evs, id, t, plan) {
+    const o0 = (plan.objects || []).find((o) => o.id === id);
+    let st = { state: "ground", x: o0 ? o0.x || 0 : 0, holder: null, visible: true };
+    for (const e of evs) if (e.t <= t) st = e.state === "held" ? { state: "held", holder: e.holder, joint: e.joint, x: null, visible: true } : { state: "ground", x: e.x, holder: null, visible: true };
+    return st;
+  }
+
+  /* ---------- Mémoire des personnages ---------- */
+  const REQUIRED = ["id", "name", "files", "anims", "expressions", "voice", "look"]; // files = hashes d'actifs réels (IndexedDB)
+  class CharacterLibrary {
+    constructor() { this.m = new Map(); }
+    validate(r) {
+      const miss = REQUIRED.filter((k) => r[k] == null);
+      if (miss.length) return ["champs manquants : " + miss.join(", ")];
+      const e = [];
+      if (!r.files.skeleton) e.push("fichier de squelette manquant");
+      if (!r.files.atlas && !(r.files.textures && r.files.textures.length)) e.push("textures manquantes");
+      if (!r.anims.includes("idle")) e.push("animation « idle » obligatoire");
+      return e;
+    }
+    register(r) { const e = this.validate(r); if (e.length) return { ok: false, errors: e }; this.m.set(r.id, JSON.parse(JSON.stringify(r))); return { ok: true }; }
+    get(id) { return this.m.get(id) || null; }
+    has(id) { return this.m.has(id); }
+    exportJSON() { return JSON.stringify({ version: 1, characters: [...this.m.values()] }); }
+    importJSON(s) { const d = JSON.parse(s); let n = 0; const bad = []; for (const r of d.characters || []) { const x = this.register(r); x.ok ? n++ : bad.push({ id: r.id, errors: x.errors }); } return { imported: n, rejected: bad }; }
+  }
+
+  const api = { ACTIONS, EMOTIONS, compile, validateAction, CharacterLibrary, talkLen };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.AnimDirector = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+</script>
+
+<script>
+/* ===== Studio 2D : orchestration, mémoire visuelle et rendu PixiJS ===== */
+window.__STORY_2D_DATA = () => ({ PR, LS, CUR, caption, drawBg: window.drawBg, drawCode, AG, AGS, STEP, track, agSet, allA, putA, sp, ask, J, TASKS, drawT, agRow, mouthFor });
+window.archAll=window.archAll2D; window.graphAll=window.graphAll2D; window.qcAll=window.qcAll2D;
+window.__STRICT_PRODUCTION_CHECK = async function(){
+  if(!window.PIXI2D || !window.PIXI2D.version) throw new Error('PixiJS indisponible.');
+  if(!window.RIGBY2D || typeof window.RIGBY2D.validateScene!=='function' || typeof window.RIGBY2D.renderScene!=='function')
+    throw new Error('Runtime Rigby2D non intégré/chargé : export refusé plutôt que de fabriquer des personnages de secours.');
+  const d=window.__STORY_2D_DATA(),all=await d.allA();
+  for(let i=0;i<d.PR.scenes.length;i++){
+    const sc=d.PR.scenes[i],names=sc.characters||[];
+    if(!sc.bg || !all.some(a=>a.hash===sc.bg&&['image','vidéo'].includes(a.kind))) throw new Error('Scène '+(i+1)+' : décor réel manquant.');
+    if(!Array.isArray(sc.motionPlan)||sc.motionPlan.length!==names.length) throw new Error('Scène '+(i+1)+' : plan d’animation IA incomplet.');
+    const result=await window.RIGBY2D.validateScene(sc);
+    if(result!==true) throw new Error('Scène '+(i+1)+' : '+String(result||'validation Rigby2D refusée'));
+  }
+  return true;
+};
+window.__STORY_2D_READY_UI = () => {
+  const tab = document.querySelector('[data-t="res"]');
+  if (tab) tab.textContent = "Ressources";
+  const oldIntro = document.querySelector('#t_res .card .note');
+  const oldTab = document.querySelector('#t_res .card h2');
+  if (oldTab) oldTab.textContent = "Importer des médias et ressources 2D";
+  const add2d = document.createElement('div');
+  add2d.className = 'card';
+  add2d.id = 'rigby-info';
+  add2d.innerHTML = '<h2>🦴 Atelier automatique de personnages 2D</h2><p class="note">Le studio peut maintenant envoyer automatiquement une illustration PSD en couches au service Rigby2D, lancer AutoRig, récupérer le squelette et l’associer au personnage. Une image aplatie ne peut pas être découpée correctement par AutoRig : il faut une source PSD réellement en couches.</p><label class="note" style="display:block">Adresse du service AutoRig (HTTPS)<input id="rig-endpoint" type="url" placeholder="https://mon-service.example.com" style="margin-top:8px"></label><label class="note" style="display:block">Jeton d’accès du service (obligatoire)<input id="rig-token" type="password" autocomplete="off" placeholder="Jeton fourni par le service hébergé" style="margin-top:8px"></label><div class="row"><button id="rig-save" class="g">Enregistrer le service</button><button id="rig-test" class="g">Tester la connexion</button></div><label class="note" style="display:block">Importer un ZIP de rigs déjà existants (facultatif)<input id="rig-file" type="file" accept=".zip,application/zip" style="margin-top:8px"></label><p id="rig-status" class="note">Chargement du moteur 2D…</p><label class="note" style="display:block">Runtime PixiJS 8.23.0 — secours si les deux CDN sont indisponibles<input id="pixi-runtime-file" type="file" accept=".js,text/javascript,application/javascript" style="margin-top:8px"></label><label class="note" style="display:block">Runtime Rigby2D 0.6.0 — secours si le chargement automatique échoue<input id="rig-runtime-file" type="file" accept=".js,text/javascript,application/javascript" style="margin-top:8px"></label><div id="rig-catalog"></div><p class="note">Pour préparer automatiquement les personnages : importe dans Ressources un PSD en couches par personnage, avec un nom correspondant au personnage (ex. Lucas.psd). Le studio enverra ce PSD au service, lancera AutoRig et associera le résultat. Le service doit être déployé une fois sur un hébergement Node.js.</p><p class="note"><a href="https://rigby2d.com/" target="_blank" rel="noopener">Rigby2D</a> · <a href="https://pixijs.com/" target="_blank" rel="noopener">PixiJS</a></p>';
+  const res = document.querySelector('#t_res');
+  if (res && !document.querySelector('#rigby-info')) res.appendChild(add2d);
+  const titles = [...document.querySelectorAll('.card h2')];
+  titles.forEach(h => {
+    if (/Qualité graphique 3D|Bibliothèques externes|Ressources 3D|Équipe de production \(9 agents\)/i.test(h.textContent)) {
+      const card = h.closest('.card'); if (card) card.style.display = 'none';
+    }
+  });
+  if (typeof drawChars === 'function') {
+    window.drawChars2D();
+  }
+};
+window.drawChars2D = function () {
+  const { PR } = window.__STORY_2D_DATA();
+  const host = document.querySelector('#chars');
+  if (!host) return;
+  host.innerHTML = PR.chars.map((c,i) =>
+    `<div class="it"><b>${String(c.name).replace(/[<>&"]/g,'')}</b> — ${String(c.desc||'apparence à définir').replace(/[<>&"]/g,'')}<br><span class="note">Profil mémorisé · rig 2D réel à associer</span><button class="g" data-r="${i}">Supprimer</button></div>`
+  ).join('') || '<p class="note">Aucun personnage. Ajoute les personnages de ton histoire ici.</p>';
+};
+/* Adresse HTTPS du service AutoRig déployé, à renseigner UNE fois ici (sans / final). Ex. 'https://mon-autorig.onrender.com'.
+   Elle sert de valeur par défaut quand rien n'est enregistré sur l'appareil. */
+window.RIG_DEFAULT_ENDPOINT = '';
+window.rigServiceConfig = () => {
+  let c={}; try { c=JSON.parse(localStorage.getItem('sf_rig_service')||'{}'); } catch(e) {}
+  return {endpoint:(c.endpoint||window.RIG_DEFAULT_ENDPOINT||'').trim(), token:c.token||''};
+};
+window.saveRigService = function(){
+  const endpoint=(document.querySelector('#rig-endpoint')?.value||'').trim().replace(/\/$/,''),token=(document.querySelector('#rig-token')?.value||'').trim();
+  if(endpoint && !/^https:\/\//i.test(endpoint)) throw new Error('Le service AutoRig doit utiliser HTTPS.');
+  if(endpoint||token) localStorage.setItem('sf_rig_service',JSON.stringify({endpoint,token}));
+  return {endpoint,token};
+};
+window.testRigService = async function(){
+  const cfg=window.saveRigService(); if(!cfg.endpoint) cfg.endpoint=window.rigServiceConfig().endpoint; if(!cfg.endpoint) throw new Error('Renseigne d’abord l’adresse HTTPS du service AutoRig.');
+  let res;
+  try{res=await fetch(cfg.endpoint+'/health',{headers:cfg.token?{'Authorization':'Bearer '+cfg.token}:{}});}
+  catch(e){throw new Error('Service injoignable : adresse incorrecte, serveur arrêté/en veille, ou CORS non autorisé par le serveur (page ouverte depuis content://, origine « null »).');}
+  if(!res.ok) throw new Error('Service AutoRig : HTTP '+res.status+(res.status===401||res.status===403?' (jeton refusé)':''));
+  let j;try{j=await res.json();}catch(e){throw new Error('Le service répond mais pas en JSON sur /health : ce n’est pas le service AutoRig.');}
+   if(j.ok!==true || !j.autorig) throw new Error('Le service répond, mais AutoRig n’est pas opérationnel.');
+  const el=document.querySelector('#rig-status');if(el)el.textContent='Service AutoRig connecté · '+(j.rigbyVersion||'version vérifiée');
+  return j;
+};
+window.prepareCharacters2D = async function(){
+  const d=window.__STORY_2D_DATA(),{PR,agSet,allA,putA}=d;
+  const used=[...new Set(PR.scenes.flatMap(s=>s.characters||[]))];
+  if(!used.length) throw new Error('Aucun personnage dans les scènes.');
+  await window.RIGBY2DReady;
+  if(!window.RIGBY2D) throw new Error('Runtime PixiJS/Rigby2D indisponible.');
+  const missing=used.filter(n=>!window.RIGBY2D.hasCharacter(n));
+  if(!missing.length){agSet('lib',100,'Tous les personnages possèdent déjà un rig 2D réel.','ok');return 'Rigs existants vérifiés';}
+  const cfg=window.rigServiceConfig();
+  if(!cfg.endpoint) throw new Error('Service AutoRig non configuré. Ajoute son adresse dans Ressources > Atelier automatique.');
+  const assets=await allA();
+  for(let i=0;i<missing.length;i++){
+    const name=missing[i],slug=String(name).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    const source=assets.find(a=>a.kind==='rigsource'&&String(a.name).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')===slug);
+    if(!source||!source.blob) throw new Error('Illustration PSD en couches manquante pour « '+name+' ». Importe '+name+'.psd dans Ressources.');
+    agSet('lib',Math.round(i/missing.length*90),'AutoRig de '+name+' ('+(i+1)+'/'+missing.length+')…','w');
+    const form=new FormData();form.append('artwork',source.blob,slug+'.psd');form.append('characterName',name);
+    const headers={};if(cfg.token)headers.Authorization='Bearer '+cfg.token;
+    const res=await fetch(cfg.endpoint+'/api/autorig',{method:'POST',headers,body:form});
+    if(!res.ok){let msg='HTTP '+res.status;try{const j=await res.json();msg=j.error||msg;}catch(e){}throw new Error('AutoRig de '+name+' : '+msg);}
+    const zipBlob=await res.blob();if(!zipBlob.size||zipBlob.type.includes('json'))throw new Error('AutoRig de '+name+' : archive vide ou réponse invalide.');
+    const file=new File([zipBlob],slug+'.zip',{type:'application/zip'});
+    const count=await window.RIGBY2D.importZip(file);
+    const rig=[...window.RIGBY2D.registry.values()].find(r=>String(r.id).toLowerCase()===slug||String(r.name).toLowerCase()===slug);
+    if(!rig||!count)throw new Error('AutoRig a répondu, mais le rig de '+name+' n’a pas pu être chargé.');
+    const c=PR.chars.find(x=>String(x.name).toLowerCase()===name.toLowerCase());if(!c)throw new Error('Profil de personnage introuvable : '+name);
+    c.rigId=rig.id;
+    const hash=await crypto.subtle.digest('SHA-256',await file.arrayBuffer()),hex=[...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');
+    if(!assets.some(a=>a.hash===hex)) await putA({hash:hex,name:slug,path:slug+'.zip',ext:'zip',pack:'Rigby2D · AutoRig automatique',license:'créé depuis le PSD fourni',kind:'rig2d',anims:[],animsKnown:false,size:file.size,blob:file});
+    localStorage.setItem('sf_proj',JSON.stringify(PR));
+    if(typeof window.drawChars2D==='function')window.drawChars2D();
+  }
+  agSet('lib',100,missing.length+' personnage(s) riggé(s) et associé(s) automatiquement.','ok');
+  return missing.length+' rig(s) créés et associés';
+};
+window.libAll2D = async function () {
+  const { PR } = window.__STORY_2D_DATA();
+  if(!PR.chars.length) throw new Error('Aucun personnage déclaré dans l’histoire.');
+  if(!window.RIGBY2D || typeof window.RIGBY2D.hasCharacter!=='function')
+    throw new Error('Runtime Rigby2D non chargé : aucun personnage ne sera dessiné en vectoriel à sa place.');
+  const missing=PR.chars.filter(c=>PR.scenes.some(s=>(s.characters||[]).some(n=>n.toLowerCase()===c.name.toLowerCase()))&&!window.RIGBY2D.hasCharacter(c.name));
+  if(missing.length) throw new Error('Rig(s) Rigby2D manquant(s) : '+missing.map(c=>c.name).join(', '));
+  return PR.chars.length+' rig(s) Rigby2D réel(s) vérifiés';
+};
+window.archAll2D = async function () {
+  const { PR } = window.__STORY_2D_DATA();
+  if(!PR.scenes.length) throw new Error('Aucune scène à décorer.');
+  const all=await window.__STORY_2D_DATA().allA();
+  const errors=PR.scenes.map((s,i)=>{const a=all.find(x=>x.hash===s.bg);return !a||!['image','vidéo'].includes(a.kind)?'scène '+(i+1)+' : décor réel non sélectionné':''}).filter(Boolean);
+  if(errors.length) throw new Error(errors.join(' ; '));
+  return PR.scenes.length+' décor(s) importé(s) contrôlé(s)';
+};
+window.graphAll2D = async function () {
+  const { PR } = window.__STORY_2D_DATA();
+  if(!window.RIGBY2D || typeof window.RIGBY2D.prepareScene!=='function')
+    throw new Error('Aucun moteur de personnage Rigby2D opérationnel. Le studio ne remplace plus les rigs par des silhouettes vectorielles.');
+  for(let i=0;i<PR.scenes.length;i++) await window.RIGBY2D.prepareScene(PR.scenes[i]);
+  return PR.scenes.length+' scène(s) préparées avec le runtime Rigby2D';
+};
+window.qcAll2D = async function () {
+  const { PR, agSet } = window.__STORY_2D_DATA();
+  const errs=[];
+  PR.scenes.forEach((s,i)=>{
+    const names=new Set((s.characters||[]).map(n=>String(n).toLowerCase()));
+    (s.dialogue||[]).forEach(d=>{if(d.who&&!names.has(String(d.who).toLowerCase()))errs.push('Scène '+(i+1)+' : '+d.who+' parle sans être présent.')});
+    if(!s.location) errs.push('Scène '+(i+1)+' : lieu non précisé.');
+  });
+  if(!window.RIGBY2D || typeof window.RIGBY2D.validateScene!=='function') errs.push('Runtime Rigby2D absent : contrôle graphique impossible');
+  if(!errs.length) for(let i=0;i<PR.scenes.length;i++){const result=await window.RIGBY2D.validateScene(PR.scenes[i]);if(result!==true)errs.push('Scène '+(i+1)+' : '+String(result||'validation Rigby2D refusée'));}
+  agSet('qc',errs.length?0:100,errs.length?'Échec bloquant : '+errs.join(' · '):'Rigs, scènes et ressources vérifiés par Rigby2D',errs.length?'bad':'ok');
+  if(errs.length) throw new Error(errs.join(' · '));
+  return 'Contrôle qualité Rigby2D réussi';
+};
+
+window.planAnimations2D = async function () {
+  const d=window.__STORY_2D_DATA(),{PR,agSet,track,ask,J,sp}=d;
+  if(!PR.scenes.length) throw new Error('Aucune scène à animer.');
+  return track('anim','🎬 Directeur d’animation 2D','Analyse des actions de chaque personnage…',async()=>{
+    await window.RIGBY2DReady;
+    if(!window.RIGBY2D||!window.RIGBY2D.registry.size) throw new Error('Aucun rig réel après la préparation automatique. Vérifie le service AutoRig et les sources PSD en couches.');
+    const getRig=name=>{const c=PR.chars.find(x=>x.name.toLowerCase()===String(name).toLowerCase());if(!c)return null;return [...window.RIGBY2D.registry.values()].find(r=>String(r.id).toLowerCase()===String(c.rigId||c.name).toLowerCase()||String(r.name).toLowerCase()===String(c.name).toLowerCase())||null;};
+    const needed=[...new Set(PR.scenes.flatMap(s=>s.characters||[]))],available={};
+    needed.forEach(name=>{const rig=getRig(name);if(!rig)throw new Error('Aucun rig associé à '+name+'.');available[name]=rig.animationNames;});
+    const compact=PR.scenes.map((s,i)=>({scene:i,title:s.title,location:s.location,action:s.action,characters:s.characters,dialogue:s.dialogue}));
+    const prompt=`Tu es le directeur d’animation d’un court-métrage 2D. Pour chaque scène, donne à CHAQUE personnage une action visible, précise et réalisable. N’invente aucun personnage. Respecte les rôles : celui qui écoute ne mime pas celui qui parle ; celui qui marche avance ; celui qui salue lève le bras ; celui qui prend ou donne un objet tend le bras. Utilise une action sémantique parmi idle, walk, run, turn_left, turn_right, wave, point, reach, talk, listening, thinking, nod, sit. Ajoute impérativement animation avec le NOM EXACT d’une animation disponible pour ce personnage dans la liste fournie. N’invente jamais de nom d’animation et ne choisis jamais une animation absente. Si le rig ne possède pas d’animation adaptée à l’action, choisis une action sémantique différente réellement compatible avec une animation existante. Émotion parmi neutral, happy, sad, surprised, angry, confused, worried. Réponds UNIQUEMENT en JSON : {"scenes":[{"scene":0,"characters":[{"name":"Nom exact","action":"walk","animation":"walk","emotion":"happy"}]}]}. Animations réellement disponibles par personnage : ${JSON.stringify(available)}. Scènes : ${JSON.stringify(compact)}`;
+    const raw=await ask('animation',prompt);
+    const obj=J(raw);
+    if(!obj||!Array.isArray(obj.scenes)) throw new Error('Réponse de l’agent animation invalide : aucune action locale de remplacement ne sera inventée.');
+    const allowed=new Set(['idle','walk','run','turn_left','turn_right','wave','point','reach','talk','listening','thinking','nod','sit']);
+    const emotions=new Set(['neutral','happy','sad','surprised','angry','confused','worried']);
+    PR.scenes.forEach((s,i)=>{
+      const found=obj.scenes.find(q=>Number(q.scene)===i);
+      const names=new Set((s.characters||[]).map(n=>String(n).toLowerCase()));
+      const returned=(found&&Array.isArray(found.characters)?found.characters:[]).filter(c=>names.has(String(c.name||'').toLowerCase()));
+      const missing=(s.characters||[]).filter(name=>!returned.some(c=>String(c.name||'').toLowerCase()===name.toLowerCase()));
+      if(missing.length) throw new Error('Scène '+(i+1)+' : actions absentes pour '+missing.join(', '));
+      s.motionPlan=returned.map(c=>{if(!allowed.has(c.action)||!emotions.has(c.emotion)||typeof c.animation!=='string'||!c.animation.trim())throw new Error('Scène '+(i+1)+' : action, émotion ou animation exacte absente pour '+c.name);const rig=getRig(c.name);if(!rig||!rig.animationNames.includes(c.animation))throw new Error('Scène '+(i+1)+' : animation « '+c.animation+' » absente du rig de '+c.name);return{name:String(c.name),action:c.action,animation:c.animation,emotion:c.emotion};});
+    });
+    sp();agSet('anim',100,'Actions et émotions reçues et validées par IA','ok');
+    return PR.scenes.length+' plan(s) de mouvement IA validés';
+  });
+};
+
+
+/* Active les remplacements 2D dès le chargement, même si le CDN PixiJS met du temps à répondre. */
+window.archAll=window.archAll2D; window.graphAll=window.graphAll2D; window.qcAll=window.qcAll2D;
+const __d2=window.__STORY_2D_DATA();
+__d2.STEP.info=()=>runInfo();
+__d2.TASKS.animation='Directeur d’animation 2D (actions et émotions des personnages)';
+if(!__d2.AG.some(a=>a[0]==='anim')) {
+  const ix=__d2.AG.findIndex(a=>a[0]==='gr');
+  __d2.AG.splice(ix<0?__d2.AG.length:ix,0,['anim','🎬 Directeur d’animation 2D','actions, gestes, déplacements et émotions']);
+  const rr=__d2.agRow('anim','🎬 Directeur d’animation 2D');
+  __d2.agSet('anim',0,'actions et gestes 2D · en attente','');
+  const b=rr.d.querySelector('.agb');b.style.display='';
+  b.onclick=async()=>{b.disabled=true;try{await window.planAnimations2D()}catch(e){__d2.agSet('anim',0,'Échec : '+e.message,'bad')}finally{b.disabled=false}};
+  __d2.STEP.anim=()=>window.planAnimations2D();
+  __d2.drawT();
+}
+window.__STORY_2D_READY_UI();
+
+</script>
+<!-- Chargement classique et versions épinglées : PixiJS 8.23.0 + Rigby2D 0.6.0. -->
+<script>
+/* Charge les deux moteurs sans dépendre du stockage local ni d'un rechargement.
+   Les fichiers choisis manuellement sont exécutés immédiatement dans la page courante. */
+(function(){
+  const status=(msg,bad=false)=>{const el=document.querySelector('#rig-status');if(el){el.textContent=msg;el.style.color=bad?'#ff6b6b':'#a597c4';}};
+  const gate=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
+  const pixiGate=gate(),rigbyGate=gate();
+  window.PIXI_RUNTIME_READY=pixiGate.promise;
+  window.RIGBY_RUNTIME_READY=rigbyGate.promise;
+  window.PIXI_RUNTIME_ERRORS=[];
+  window.RIGBY_RUNTIME_ERRORS=[];
+  const loadScript=(url,check,label)=>new Promise((resolve,reject)=>{
+    if(check()){resolve(label+' déjà présent');return;}
+    const sc=document.createElement('script');let settled=false;
+    const finish=(err)=>{if(settled)return;settled=true;clearTimeout(timer);sc.onload=sc.onerror=null;if(err){sc.remove();reject(err);}else resolve(label);};
+    const timer=setTimeout(()=>finish(new Error(label+' : délai dépassé')),15000);
+    sc.src=url;
+    sc.onload=()=>check()?finish():finish(new Error(label+' : script chargé mais API absente'));
+    sc.onerror=()=>finish(new Error(label+' : téléchargement refusé'));
+    document.head.appendChild(sc);
+  });
+  const runUploaded=(file,check,label)=>file.text().then(src=>{
+    if(src.length<1000)throw new Error('Fichier trop court ou incomplet.');
+    const blobUrl=URL.createObjectURL(new Blob([src],{type:'text/javascript'}));
+    return new Promise((resolve,reject)=>{
+      const sc=document.createElement('script');let settled=false;
+      const finish=(err)=>{if(settled)return;settled=true;sc.onload=sc.onerror=null;URL.revokeObjectURL(blobUrl);if(err){sc.remove();reject(err);}else resolve(label);};
+      const timer=setTimeout(()=>finish(new Error('Exécution du fichier : délai dépassé')),15000);
+      sc.onload=()=>{clearTimeout(timer);check()?finish():finish(new Error('Le fichier a été exécuté, mais son API attendue est absente.'));};
+      sc.onerror=()=>{clearTimeout(timer);finish(new Error('Le navigateur a refusé ce fichier JavaScript.'));};
+      sc.src=blobUrl;document.head.appendChild(sc);
+    });
+  });
+  async function loadPixi(){
+    if(window.PIXI&&window.PIXI.Application){pixiGate.resolve('déjà présent');return;}
+    const urls=[
+      'https://cdn.jsdelivr.net/npm/pixi.js@8.23.0/dist/pixi.min.js',
+      'https://unpkg.com/pixi.js@8.23.0/dist/pixi.min.js'
+    ];
+    for(const url of urls){try{const label=await loadScript(url,()=>!!(window.PIXI&&window.PIXI.Application),'PixiJS 8.23.0');pixiGate.resolve(label);return;}catch(e){window.PIXI_RUNTIME_ERRORS.push(url+' → '+e.message);}}
+    status('PixiJS 8.23.0 non chargé automatiquement. Si le problème persiste, importe le fichier pixi.min.js dans le champ de secours ci-dessus.',true);
+  }
+  async function loadRigby(){
+    if(window.RigbyPixi){rigbyGate.resolve('déjà présent');return;}
+    const url='https://github.com/jaisurya-dev-art/rigby2d/releases/download/v0.6.0/rigby2d-pixi-0.6.0.js';
+    try{const label=await loadScript(url,()=>!!window.RigbyPixi,'Rigby2D 0.6.0');rigbyGate.resolve(label);return;}catch(e){window.RIGBY_RUNTIME_ERRORS.push(e.message);}
+    /* Certaines pages Android refusent le type MIME du fichier de release dans une balise script.
+       On tente alors le téléchargement CORS puis l'exécution d'un Blob JavaScript. */
+    try{
+      const response=await fetch(url,{mode:'cors',cache:'force-cache'});
+      if(!response.ok)throw new Error('HTTP '+response.status);
+      const src=await response.text();
+      if(src.length<1000||/^\s*</.test(src))throw new Error('la réponse reçue n’est pas le runtime JavaScript');
+      const label=await runUploaded({text:async()=>src},()=>!!window.RigbyPixi,'Rigby2D 0.6.0');
+      rigbyGate.resolve(label);return;
+    }catch(e){window.RIGBY_RUNTIME_ERRORS.push(e.message);}
+    status('Rigby2D 0.6.0 non chargé automatiquement. Importe le fichier officiel rigby2d-pixi-0.6.0.js dans le champ de secours ; il sera activé sans stockage ni rechargement.',true);
+  }
+  const pixiInput=document.querySelector('#pixi-runtime-file');
+  if(pixiInput)pixiInput.onchange=async()=>{
+    const file=pixiInput.files&&pixiInput.files[0];pixiInput.value='';if(!file)return;
+    try{
+      const label=await runUploaded(file,()=>!!(window.PIXI&&window.PIXI.Application),'PixiJS 8.23.0');
+      pixiGate.resolve(label);status('PixiJS chargé dans cette page. Vérification de Rigby2D…');
+    }catch(e){status('Import PixiJS refusé : '+e.message,true);}
+  };
+  const rigInput=document.querySelector('#rig-runtime-file');
+  if(rigInput)rigInput.onchange=async()=>{
+    const file=rigInput.files&&rigInput.files[0];rigInput.value='';if(!file)return;
+    try{
+      const label=await runUploaded(file,()=>!!window.RigbyPixi,'Rigby2D 0.6.0');
+      rigbyGate.resolve(label);status('Rigby2D chargé dans cette page. Initialisation du moteur 2D…');
+    }catch(e){status('Import Rigby2D refusé : '+e.message,true);}
+  };
+  status('Chargement automatique de PixiJS 8.23.0 et Rigby2D 0.6.0…');
+  loadPixi();loadRigby();
+})();
+</script>
+<script>
+/* Runtime réel Rigby2D 0.6.0 + PixiJS 8.23.0. Aucun personnage de substitution. */
+window.PIXI2DReady = (async () => {
+  const status = (msg, bad=false) => { const el=document.querySelector('#rig-status'); if(el){el.textContent=msg;el.style.color=bad?'#ff6b6b':'#a597c4';} };
+  try {
+    await Promise.all([window.PIXI_RUNTIME_READY,window.RIGBY_RUNTIME_READY]);
+    const PIXI = window.PIXI;
+    if(!PIXI || !PIXI.Application) throw new Error('PixiJS 8.23.0 est absent après le chargement.');
+    const rigGlobal = window.RigbyPixi;
+    const rigbyPixi = typeof rigGlobal === 'function' ? rigGlobal : rigGlobal && rigGlobal.rigbyPixi;
+    if(typeof rigbyPixi!=='function') throw new Error('Le runtime Rigby2D 0.6.0 n’a pas été chargé. Le fichier n’a pas pu être chargé.');
+    const {loadRigby,RigbySkeleton}=rigbyPixi(PIXI);
+    if(typeof loadRigby!=='function'||typeof RigbySkeleton!=='function') throw new Error('API Rigby2D incomplète : loadRigby/RigbySkeleton absents.');
+    const app=new PIXI.Application();
+    await app.init({width:720,height:1280,backgroundAlpha:0,autoStart:false,preference:'webgl',antialias:true,resolution:1,powerPreference:'low-power',clearBeforeRender:true});
+    app.stop();
+    const registry=new Map(),sceneCache=new Map(),objectUrls=[];
+    const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const basename=s=>String(s||'').split('/').pop().toLowerCase();
+    async function importZip(file){
+      const zip=await JSZip.loadAsync(file),files=Object.keys(zip.files).filter(k=>!zip.files[k].dir);
+      const atlases=files.filter(k=>/\.atlas$/i.test(k));
+      if(!atlases.length) throw new Error('ZIP invalide : aucun fichier .atlas.');
+      let imported=0;
+      for(const atlasPath of atlases){
+        const folder=atlasPath.includes('/')?atlasPath.slice(0,atlasPath.lastIndexOf('/')+1):'';
+        const stem=atlasPath.replace(/\.atlas$/i,'');
+        const skeletonPath=files.find(k=>k.toLowerCase()===(stem+'.skel').toLowerCase()) || files.find(k=>k.toLowerCase()===(stem+'.json').toLowerCase()) || files.find(k=>/\.(skel|json)$/i.test(k)&&k.split('/').slice(0,-1).join('/')===atlasPath.split('/').slice(0,-1).join('/'));
+        if(!skeletonPath) throw new Error('Atlas '+basename(atlasPath)+' : aucun .json ou .skel correspondant.');
+        let atlasText=await zip.file(atlasPath).async('text');
+        const pageNames=atlasText.split(/\r?\n/).map(x=>x.trim()).filter(x=>/\.(png|webp|jpe?g)$/i.test(x));
+        if(!pageNames.length) throw new Error('Atlas '+basename(atlasPath)+' : aucune page texture détectée.');
+        for(const page of pageNames){
+          const entry=files.find(k=>k.toLowerCase()===(folder+page).toLowerCase())||files.find(k=>basename(k)===basename(page));
+          if(!entry) throw new Error('Texture manquante dans le ZIP : '+page);
+          const blob=await zip.file(entry).async('blob');
+          const url=URL.createObjectURL(blob);objectUrls.push(url);
+          // Le runtime officiel résout les pages de texture à partir du fichier atlas.
+          // On remplace leur nom relatif par une URL Blob autonome, adaptée à l'import ZIP navigateur.
+          atlasText=atlasText.split(/\r?\n/).map(line=>line.trim()===page?url:line).join('\n');
+        }
+        const skelBlob=await zip.file(skeletonPath).async('blob');
+        const skelUrl=URL.createObjectURL(new Blob([skelBlob],{type:/\.json$/i.test(skeletonPath)?'application/json':'application/octet-stream'}));
+        const atlasUrl=URL.createObjectURL(new Blob([atlasText],{type:'text/plain'}));
+        objectUrls.push(skelUrl,atlasUrl);
+        // loadRigby est l'API officielle PixiJS : elle charge le squelette ET les pages atlas.
+        const data=await loadRigby(skelUrl,atlasUrl);
+        if(!data) throw new Error('Le runtime n’a retourné aucune donnée pour '+basename(skeletonPath)+'.');
+        // Rigby/Spine JSON commonly stores animations and skins as keyed objects,
+        // not arrays. Read both shapes so valid exported animations are not lost.
+        const animationNames=Array.isArray(data.animationNames)?[...data.animationNames]:
+          Array.isArray(data.animations)?data.animations.map(a=>typeof a==='string'?a:a.name).filter(Boolean):
+          data.animations&&typeof data.animations==='object'?Object.keys(data.animations):[];
+        const skinNames=Array.isArray(data.skinNames)?[...data.skinNames]:
+          Array.isArray(data.skins)?data.skins.map(s=>typeof s==='string'?s:s.name).filter(Boolean):
+          data.skins&&typeof data.skins==='object'?Object.keys(data.skins):[];
+        const id=stem.split('/').pop();
+        registry.set(norm(id),{id,name:id,data,animationNames,skinNames,source:file.name});
+        imported++;
+      }
+      if(!imported) throw new Error('Aucun rig valide dans cette archive.');
+      drawRigCatalog();
+      return imported;
+    }
+    function rigForCharacter(c){
+      if(c.rigId&&registry.has(norm(c.rigId))) return registry.get(norm(c.rigId));
+      return registry.get(norm(c.name))||null;
+    }
+    function resolveAnimation(rig,action,explicit){
+      const a=norm(action),names=rig.animationNames;
+      if(explicit){const exact=names.find(n=>n===explicit);if(!exact)throw new Error('Animation exacte « '+explicit+' » absente du rig « '+rig.name+' ».');return exact;}
+      const tests={idle:[/^(idle|stand|standing)$/],walk:[/walk/],run:[/run|sprint/],turn_left:[/turn|rotate/],turn_right:[/turn|rotate/],wave:[/wave|greet/],point:[/point/],reach:[/reach|grab|pickup|pick_up/],talk:[/talk|speak|speaking/],listening:[/listen|listening/],thinking:[/think|thinking/],nod:[/nod/],sit:[/sit|sitting/]};
+      const patterns=tests[a];
+      if(!patterns) throw new Error('Action non prise en charge par le moteur : '+action);
+      const found=names.find(n=>patterns.some(re=>re.test(norm(n))));
+      if(!found) throw new Error('Le rig « '+rig.name+' » ne possède pas l’animation requise pour « '+action+' ». Animations disponibles : '+names.join(', '));
+      return found;
+    }
+    function validateScene(sc){
+      const chars=sc.characters||[],plans=sc.motionPlan||[];
+      if(plans.length!==chars.length) return 'Plan de mouvement incomplet.';
+      for(const name of chars){
+        const c=window.__STORY_2D_DATA().PR.chars.find(x=>norm(x.name)===norm(name));
+        const rig=c&&rigForCharacter(c);if(!rig)return 'Aucun rig Rigby2D associé à '+name+'.';
+        const plan=plans.find(x=>norm(x.name)===norm(name));if(!plan)return 'Action IA absente pour '+name+'.';
+        try{resolveAnimation(rig,plan.action,plan.animation)}catch(e){return e.message;}
+      }
+      return true;
+    }
+    function buildScene(index,sc,W,H){
+      const chars=sc.characters||[],plans=sc.motionPlan||[],items=[];
+      chars.forEach((name,i)=>{
+        const c=window.__STORY_2D_DATA().PR.chars.find(x=>norm(x.name)===norm(name)),rig=rigForCharacter(c),plan=plans.find(x=>norm(x.name)===norm(name));
+        if(!rig||!plan) throw new Error('Rig ou action absent pour '+name+'.');
+        const anim=resolveAnimation(rig,plan.action,plan.animation),sk=new RigbySkeleton(rig.data,{animation:anim,loop:true,autoUpdate:false,skin:rig.skinNames.includes(plan.emotion)?plan.emotion:undefined});
+        const bounds=sk.getLocalBounds();if(!bounds||!Number.isFinite(bounds.height)||bounds.height<=0)throw new Error('Dimensions invalides pour le rig '+rig.name+'.');
+        const targetRatio=chars.length>2?.31:.43,baseRatio=(i+1)/(chars.length+1),baseSign=plan.action==='turn_left'?-1:plan.action==='turn_right'?1:(i===0?1:-1);
+        const scale=H*targetRatio/bounds.height;sk.scale.set(scale*baseSign,scale);sk.position.set(W*baseRatio,H*.88);
+        app.stage.addChild(sk);items.push({name,sk,anim,action:plan.action,lastT:0,baseRatio,targetRatio,boundsH:bounds.height,baseSign,dir:i%2===0?1:-1});
+      });
+      return {index,items,scene:sc};
+    }
+    function renderScene({ctx,W,H,o,t,subs,drawBg}){
+      const sc=o.s||o.scene||o;if(!sc)throw new Error('Scène absente dans la timeline.');
+      const index=window.__STORY_2D_DATA().PR.scenes.indexOf(sc);
+      if(index<0)throw new Error('Scène inconnue dans la timeline.');
+      const bgOk=drawBg?drawBg(ctx,W,H,sc,t,o):false;
+      if(!bgOk)throw new Error('Décor réel absent pour la scène '+(index+1)+'.');
+      let state=sceneCache.get(index);
+      if(!state){const err=validateScene(sc);if(err!==true)throw new Error(err);state=buildScene(index,sc,W,H);sceneCache.set(index,state);}
+      if(app.renderer.width!==W||app.renderer.height!==H)app.renderer.resize(W,H);
+      for(const cached of sceneCache.values())cached.items.forEach(item=>item.sk.visible=cached===state);
+      state.items.forEach(item=>{const dt=Math.max(0,Math.min(.12,t-item.lastT));item.lastT=t;if(dt>0)item.sk.update(dt);const scale=H*item.targetRatio/item.boundsH;item.sk.scale.set(scale*item.baseSign,scale);const duration=Math.max(.1,Number(o.len)||4),progress=Math.max(0,Math.min(1,t/duration));let travel=0;if(item.action==='walk'||item.action==='run')travel=W*(item.action==='run'?.22:.14)*progress;item.sk.position.set(W*item.baseRatio+item.dir*travel,H*.88);});
+      app.renderer.render({container:app.stage});
+      ctx.drawImage(app.canvas,0,0,W,H);
+      const cap=window.__STORY_2D_DATA().caption;if(subs&&typeof cap==='function'&&Array.isArray(o.L)){let elapsed=t,line=null;for(const ln of o.L){if(elapsed<=ln.len){line=ln;break;}elapsed-=ln.len;}if(line&&line.text)cap(ctx,W,H,line,elapsed);}
+    }
+    function drawRigCatalog(){
+      const host=document.querySelector('#rig-catalog');if(!host)return;
+      const d=window.__STORY_2D_DATA(),chars=d.PR.chars;
+      const rigs=[...registry.values()];
+      host.innerHTML=rigs.map(r=>`<div class="it"><b>${r.name.replace(/[<>&"]/g,'')}</b> · ${r.animationNames.length} animation(s)<br><span class="note">${r.animationNames.map(x=>x.replace(/[<>&"]/g,'')).join(' · ')}</span></div>`).join('')||'<p class="note">Aucun rig importé pour le moment.</p>';
+      chars.forEach(c=>{const card=[...document.querySelectorAll('#chars .it')].find(el=>el.querySelector('b')?.textContent===c.name);if(!card||!rigs.length)return;
+        if(!card.querySelector('[data-rig-select]')){const sel=document.createElement('select');sel.dataset.rigSelect=c.name;sel.innerHTML='<option value="">— Associer un rig réel —</option>'+rigs.map(r=>`<option value="${r.id.replace(/[<>&"]/g,'')}" ${norm(c.rigId||'')===norm(r.id)?'selected':''}>${r.name.replace(/[<>&"]/g,'')}</option>`).join('');sel.onchange=()=>{c.rigId=sel.value||'';d.LS.set('sf_proj',d.PR);status(c.rigId?'Rig associé à '+c.name+'.':'Association retirée.');};card.appendChild(sel);}
+      });
+    }
+    window.RIGBY2D={version:'0.6.0',registry,importZip,reset:()=>{sceneCache.clear();app.stage.removeChildren();},hasCharacter:name=>{const c=window.__STORY_2D_DATA().PR.chars.find(x=>norm(x.name)===norm(name));return !!(c&&rigForCharacter(c));},validateScene,prepareScene:async sc=>{const e=validateScene(sc);if(e!==true)throw new Error(e);return true;},renderScene};
+    window.PIXI2D={app,version:PIXI.VERSION,mode:'PixiJS 8.23.0 + Rigby2D 0.6.0'};
+    const cfg=window.rigServiceConfig?window.rigServiceConfig():{};
+    const ep=document.querySelector('#rig-endpoint'),tok=document.querySelector('#rig-token');if(ep)ep.value=cfg.endpoint||'';if(tok)tok.value=cfg.token||'';
+    const saveBtn=document.querySelector('#rig-save'),testBtn=document.querySelector('#rig-test');
+    if(saveBtn)saveBtn.onclick=()=>{try{window.saveRigService();status('Adresse du service AutoRig enregistrée sur cet appareil.');}catch(e){status(e.message,true);}};
+    if(testBtn)testBtn.onclick=async()=>{testBtn.disabled=true;try{await window.testRigService();}catch(e){status(e.message,true);}finally{testBtn.disabled=false;}};
+    const rigInput=document.querySelector('#rig-file');
+    if(rigInput)rigInput.onchange=async()=>{const f=rigInput.files?.[0];rigInput.value='';if(!f)return;status('Lecture du ZIP Rigby2D…');try{const n=await importZip(f);const d=window.__STORY_2D_DATA();const hash=await crypto.subtle.digest('SHA-256',await f.arrayBuffer());const hex=[...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');if(!(await d.allA()).some(a=>a.hash===hex)){await d.putA({hash:hex,name:f.name.replace(/\.zip$/i,''),path:f.name,ext:'zip',pack:'Rigby2D · import ZIP',license:'fichier importé',kind:'rig2d',anims:[],animsKnown:false,size:f.size,blob:f});}status(n+' rig(s) chargés et ZIP conservé dans le catalogue. Associe chaque rig au personnage correspondant.');drawRigCatalog();}catch(e){status('Import refusé : '+e.message,true);}};
+    const originalDraw2D=window.drawChars2D;window.drawChars2D=function(){originalDraw2D&&originalDraw2D();drawRigCatalog();};
+    const originalDrawChars=window.drawChars;window.drawChars=async function(){if(typeof originalDrawChars==='function')await originalDrawChars();window.drawChars2D();drawRigCatalog();};
+    status('Moteur PixiJS '+PIXI.VERSION+' + runtime Rigby2D 0.6.0 chargés. Moteurs prêts. Le service AutoRig doit être déployé et relié pour créer les rigs depuis les PSD en couches.');
+    const d=window.__STORY_2D_DATA();
+    const saved=await d.allA();
+    for(const a of saved.filter(x=>x.kind==='rig2d'&&x.blob)){
+      try{await importZip(a.blob);}catch(e){console.warn('Rig sauvegardé non chargeable :',a.name,e);}
+    }
+    drawRigCatalog();
+    return true;
+  } catch(e) {
+    console.error('Initialisation PixiJS/Rigby2D impossible :',e);
+    const el=document.querySelector('#rig-status');if(el){el.textContent='Moteur 2D indisponible : '+e.message+' · vérifie les deux moteurs et leur compatibilité.';el.style.color='#ff6b6b';}
+    throw e;
+  }
+})();
+
+window.RIGBY2DReady=window.PIXI2DReady;
+window.__STRICT_PRODUCTION_CHECK = async function(){
+  await window.RIGBY2DReady;
+  if(!window.PIXI2D||!window.RIGBY2D)throw new Error('Moteur PixiJS/Rigby2D indisponible.');
+  const d=window.__STORY_2D_DATA(),all=await d.allA();
+  for(let i=0;i<d.PR.scenes.length;i++){
+    const sc=d.PR.scenes[i];
+    if(!sc.bg||!all.some(a=>a.hash===sc.bg&&['image','vidéo'].includes(a.kind)))throw new Error('Scène '+(i+1)+' : décor photo/vidéo importé manquant.');
+    const result=window.RIGBY2D.validateScene(sc);if(result!==true)throw new Error('Scène '+(i+1)+' : '+result);
+  }
+  return true;
+};
+window.paintScene=function(ctx,W,H,o,t,subs){
+  if(!window.RIGBY2D)throw new Error('Runtime Rigby2D non prêt.');
+  return window.RIGBY2D.renderScene({ctx,W,H,o,t,subs,drawBg:window.drawBg});
+};
+</script>
+
+</body></html>
